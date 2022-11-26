@@ -18,10 +18,41 @@
 #define LCD_BRIGHTNESS_CONTROL_TIMER_UNIT_NUMBER	4
 #define LCD_BRIGHTNESS_CONTROL_TIMER_CHANNEL		TIM_Channel_4
 #define LCD_BRIGHTNESS_CONTROL_TIMER_AFIO_MAP		0
-#define LCD_BRIGHTNESS_CONTROL_TIMER_FREQ_HZ		1000
+#define LCD_BRIGHTNESS_CONTROL_TIMER_FREQ_HZ		100
 
 /*	Running indication LED	*/
 #define LED_INDICATOR_PIN							GPIO_Pin_B11
 
 
 #endif /* LOGINC_ANALYZER_CONFIG_H_ */
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+

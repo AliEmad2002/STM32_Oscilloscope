@@ -8,18 +8,32 @@
 /*	LIB	*/
 #include "Std_Types.h"
 #include "Bit_Math.h"
+#include "Delay_interface.h"
+#include "Img_config.h"
+#include "Img_interface.h"
+#include "Colors.h"
+#include "Debug_active.h"
 
 /*	MCAL	*/
 #include "RCC_interface.h"
 #include "SPI_interface.h"
 #include "TIM_interface.h"
 #include "GPIO_interface.h"
+#include "STK_interface.h"
 
 /*	HAL	*/
+#include "TFT_interface.h"
 
 /*	SELF	*/
 #include "Loginc_Analyzer_config.h"
 #include "Loginc_Analyzer_interface.h"
+
+
+#include "SPI_private.h"
+
+/*	static objects	*/
+static TFT_t LCD;
+static Frame_t frame;
 
 
 /*
@@ -61,25 +75,62 @@ void LA_voidInitMCAL(void)
 
 	SPI_voidInitPins(LCD_SPI_UNIT_NUMBER, LCD_SPI_AFIO_MAP, 0, 0, 1);
 
-	SPI_voidEnableUnit(SPI_UnitNumber_1);
+	SPI_ENABLE_PERIPHERAL(LCD_SPI_UNIT_NUMBER);
 
-	/**************************************************************************
-	 * TIM init:
-	 *************************************************************************/
-	TIM_u64InitPWM(
-		LCD_BRIGHTNESS_CONTROL_TIMER_UNIT_NUMBER,
-		LCD_BRIGHTNESS_CONTROL_TIMER_CHANNEL,
-		LCD_BRIGHTNESS_CONTROL_TIMER_FREQ_HZ);
-
-	TIM_voidInitOutputPin(
-		LCD_BRIGHTNESS_CONTROL_TIMER_UNIT_NUMBER,
-		LCD_BRIGHTNESS_CONTROL_TIMER_CHANNEL,
-		LCD_BRIGHTNESS_CONTROL_TIMER_AFIO_MAP);
-
-	TIM_voidEnableCounter(LCD_BRIGHTNESS_CONTROL_TIMER_UNIT_NUMBER);
+	/*volatile u16 i = 400;
+	while(1)
+	{
+		SPI_voidTransmitData(SPI_UnitNumber_1, i);
+	}*/
 }
 
+/*
+ * Inits all (HAL) hardware resources configured in "Loginc_Analyzer_configh.h"
+ * file, and static objects defined in "Loginc_Analyzer_program.c".
+ */
+void LA_voidInitHAL(void)
+{
+	/**************************************************************************
+	 * LCD init:
+	 *************************************************************************/
+	TFT_voidInitBrightnessControl(
+		&LCD, LCD_BRIGHTNESS_CONTROL_TIMER_UNIT_NUMBER,
+		LCD_BRIGHTNESS_CONTROL_TIMER_CHANNEL,
+		LCD_BRIGHTNESS_CONTROL_TIMER_FREQ_HZ,
+		LCD_BRIGHTNESS_CONTROL_TIMER_AFIO_MAP);
 
+	/*	set maximum brightness by default	*/
+	TFT_SET_BRIGHTNESS(&LCD, POW_TWO(16) - 1);
+
+	TFT_voidInit(&LCD, LCD_SPI_UNIT_NUMBER, LCD_RST_PIN, LCD_A0_PIN);
+
+	/**************************************************************************
+	 * frame init:
+	 *************************************************************************/
+	IMG_voidinitFrame(&frame, colorBlack);
+	for(u8 i = 0; i < 100; i++)
+	{IMG_CURRENT_RECT(frame).color = colorRed;
+	IMG_CURRENT_RECT(frame).pointStart = (Point_t){50, 50};
+	IMG_CURRENT_RECT(frame).pointEnd = (Point_t){60, 60};
+	frame.rectCount++;}
+
+
+	STK_voidInit();
+	STK_voidStartTickMeasure(STK_TickMeasureType_OverflowCount);
+	STK_voidEnableSysTick();
+
+
+	while(1)
+	{
+		u64 tStart = STK_u64GetElapsedTicks();
+		TFT_voidDrawFrame(&LCD, &frame);
+		u64 tEnd = STK_u64GetElapsedTicks();
+		trace_printf("%u ticks, ", (u32)(tEnd - tStart));
+		trace_printf("%u ms\n",
+			(u32)(8000 * (tEnd - tStart) / RCC_u32GetBusClk(RCC_Bus_AHB)));
+		//Delay_voidBlockingDelayMs(50);
+	}
+}
 
 
 

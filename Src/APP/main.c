@@ -17,6 +17,7 @@
 int main(void)
 {
 	LA_voidInitMCAL();
+	LA_voidInitHAL();
 
 	while(1)
 	{
