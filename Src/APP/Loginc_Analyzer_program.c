@@ -77,11 +77,10 @@ void LA_voidInitMCAL(void)
 
 	SPI_ENABLE_PERIPHERAL(LCD_SPI_UNIT_NUMBER);
 
-	/*volatile u16 i = 400;
-	while(1)
-	{
-		SPI_voidTransmitData(SPI_UnitNumber_1, i);
-	}*/
+	/**************************************************************************
+	 * ADC init:
+	 *************************************************************************/
+
 }
 
 /*
@@ -108,17 +107,18 @@ void LA_voidInitHAL(void)
 	 * frame init:
 	 *************************************************************************/
 	IMG_voidinitFrame(&frame, colorBlack);
+	/*
 	for(u8 i = 0; i < 100; i++)
-	{IMG_CURRENT_RECT(frame).color = colorRed;
-	IMG_CURRENT_RECT(frame).pointStart = (Point_t){50, 50};
-	IMG_CURRENT_RECT(frame).pointEnd = (Point_t){60, 60};
-	frame.rectCount++;}
-
+	{
+		IMG_CURRENT_RECT(frame).color = colorRed;
+		IMG_CURRENT_RECT(frame).pointStart = (Point_t){50, 50};
+		IMG_CURRENT_RECT(frame).pointEnd = (Point_t){60, 60};
+		frame.rectCount++;
+	}
 
 	STK_voidInit();
 	STK_voidStartTickMeasure(STK_TickMeasureType_OverflowCount);
 	STK_voidEnableSysTick();
-
 
 	while(1)
 	{
@@ -130,6 +130,8 @@ void LA_voidInitHAL(void)
 			(u32)(8000 * (tEnd - tStart) / RCC_u32GetBusClk(RCC_Bus_AHB)));
 		//Delay_voidBlockingDelayMs(50);
 	}
+	*/
+
 }
 
 
