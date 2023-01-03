@@ -170,6 +170,32 @@ void OSC_voidInitHAL(void)
 	TFT_voidDrawFrame(&LCD, &frame);
 
 	TFT_voidInitScroll(&LCD, 0, 162, 0);
+
+	/*u8 i = 0;
+	while (1)
+	{
+		TFT_voidScroll(&LCD, 160);
+		trace_printf("%d\n", i);
+		if (i == 161)
+		{
+			i = 0;
+		}
+	}*/
+
+	/*
+
+	while(1)
+	{
+		u64 tStart = STK_u64GetElapsedTicks();
+		TFT_voidDrawFrame(&LCD, &frame);
+		u64 tEnd = STK_u64GetElapsedTicks();
+		trace_printf("%u ticks, ", (u32)(tEnd - tStart));
+		trace_printf("%u ms\n",
+			(u32)(8000 * (tEnd - tStart) / RCC_u32GetBusClk(RCC_Bus_AHB)));
+		//Delay_voidBlockingDelayMs(50);
+	}
+	*/
+
 }
 
 /*
@@ -181,7 +207,6 @@ void OSC_voidRunMainSuperLoop(void)
 	Point_t p1 = {0, 0};
 	Point_t p2 = {128, 0};
 	u8 i;
-	//u8 whereIsReadPointInLine[160] = {0};
 	STK_voidInit();
 	STK_voidStartTickMeasure(STK_TickMeasureType_OverflowCount);
 	STK_voidEnableSysTick();
