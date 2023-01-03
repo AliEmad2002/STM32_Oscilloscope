@@ -13,13 +13,18 @@
  * Inits all (MCAL) hardware resources configured in "Loginc_Analyzer_configh.h"
  * file.
  */
-void LA_voidInitMCAL(void);
+void OSC_voidInitMCAL(void);
 
 /*
  * Inits all (HAL) hardware resources configured in "Loginc_Analyzer_configh.h"
  * file, and static objects defined in "Loginc_Analyzer_program.c".
  */
-void LA_voidInitHAL(void);
+void OSC_voidInitHAL(void);
+
+/*
+ * runs main super loop (no OS version)
+ */
+void OSC_voidRunMainSuperLoop(void);
 
 
 #endif /* LOGINC_ANALYZER_INTERFACE_H_ */

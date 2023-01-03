@@ -23,6 +23,17 @@
 /*	Running indication LED	*/
 #define LED_INDICATOR_PIN							GPIO_Pin_B11
 
+/*	Control buttons	*/
+#define BUTTON_1_PIN								GPIO_Pin_A2
+
+/*
+ * Analog channels.
+ */
+#define ANALOG_INPUT_1_PIN							GPIO_Pin_A3
+#define ANALOG_INPUT_2_PIN							GPIO_Pin_A4
+// must be an element of the enum: 'ADC_SampleTime_t'
+#define ADC_SAMPLE_TIME								ADC_SampleTime_1_5
+
 
 #endif /* LOGINC_ANALYZER_CONFIG_H_ */
 

@@ -16,8 +16,9 @@
 
 int main(void)
 {
-	LA_voidInitMCAL();
-	LA_voidInitHAL();
+	OSC_voidInitMCAL();
+	OSC_voidInitHAL();
+	OSC_voidRunMainSuperLoop();
 
 	while(1)
 	{
