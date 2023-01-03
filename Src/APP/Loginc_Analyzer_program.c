@@ -37,15 +37,10 @@
 /*	static objects	*/
 static TFT_t LCD;
 static Frame_t frame;
-static u16 ch1Val = 0;
-static u16 ch2Val = 0;
 
 /*	Defines based on configuration file	*/
 #define ADC_1_CHANNEL		(ANALOG_INPUT_1_PIN % 16)
 #define ADC_2_CHANNEL		(ANALOG_INPUT_2_PIN % 16)
-
-/*	EOC callback	*/
-void OSC_voidEOCCallback(void);
 
 /*
  * Inits all (MCAL) hardware resources configured in "Loginc_Analyzer_configh.h"
@@ -73,6 +68,13 @@ void OSC_voidInitMCAL(void)
 	RCC_voidEnablePeripheralClk(RCC_Bus_APB2, RCC_PERIPHERAL_ADC1);
 	RCC_voidEnablePeripheralClk(RCC_Bus_APB2, RCC_PERIPHERAL_ADC2);
 	RCC_voidSetAdcPrescaler(RCC_ADC_Prescaler_PCLK2_by6);
+
+	/**************************************************************************
+	 * SysTick init: (used for time-stamping)
+	 *************************************************************************/
+	STK_voidInit();
+	STK_voidStartTickMeasure(STK_TickMeasureType_OverflowCount);
+	STK_voidEnableSysTick();
 
 	/**************************************************************************
 	 * GPIO init:
@@ -118,10 +120,6 @@ void OSC_voidInitMCAL(void)
 		ADC_UnitNumber_1, ADC_ExternalEventRegular_SWSTART);
 	// enable conversion on external event:
 	ADC_voidEnableExternalTriggerRegular(ADC_UnitNumber_1);
-	// set EOC interrupt callback:
-	ADC_voidSetInterruptCallback(OSC_voidEOCCallback);
-	// enable EOC interrupt:
-	ADC_voidEnableInterrupt(ADC_UnitNumber_1, ADC_Interrupt_EOC);
 	// power on:
 	ADC_voidEnablePower(ADC_UnitNumber_1);
 	// calibrate:
@@ -133,7 +131,7 @@ void OSC_voidInitMCAL(void)
 	/**************************************************************************
 	 * NVIC init:
 	 *************************************************************************/
-	NVIC_voidEnableInterrupt(NVIC_Interrupt_ADC1_2);
+
 }
 
 /*
@@ -161,41 +159,8 @@ void OSC_voidInitHAL(void)
 	 *************************************************************************/
 	IMG_voidinitFrame(&frame, colorBlack);
 	TFT_voidDrawFrame(&LCD, &frame);
-
-	/*IMG_CURRENT_RECT(frame).color = colorRed;
-	IMG_CURRENT_RECT(frame).pointStart = (Point_t){10, 10};
-	IMG_CURRENT_RECT(frame).pointEnd = (Point_t){20, 20};
-	frame.rectCount++;*/
-
 	TFT_voidDrawFrame(&LCD, &frame);
-
 	TFT_voidInitScroll(&LCD, 0, 162, 0);
-
-	/*u8 i = 0;
-	while (1)
-	{
-		TFT_voidScroll(&LCD, 160);
-		trace_printf("%d\n", i);
-		if (i == 161)
-		{
-			i = 0;
-		}
-	}*/
-
-	/*
-
-	while(1)
-	{
-		u64 tStart = STK_u64GetElapsedTicks();
-		TFT_voidDrawFrame(&LCD, &frame);
-		u64 tEnd = STK_u64GetElapsedTicks();
-		trace_printf("%u ticks, ", (u32)(tEnd - tStart));
-		trace_printf("%u ms\n",
-			(u32)(8000 * (tEnd - tStart) / RCC_u32GetBusClk(RCC_Bus_AHB)));
-		//Delay_voidBlockingDelayMs(50);
-	}
-	*/
-
 }
 
 /*
@@ -204,52 +169,40 @@ void OSC_voidInitHAL(void)
 void OSC_voidRunMainSuperLoop(void)
 {
 	u8 tftScrollCounter = 0;
-	Point_t p1 = {0, 0};
-	Point_t p2 = {128, 0};
-	u8 i;
-	STK_voidInit();
-	STK_voidStartTickMeasure(STK_TickMeasureType_OverflowCount);
-	STK_voidEnableSysTick();
+	Point_t p = {0, 0};
+	u8 whereIsReadPointInLine[160] = {0};
 	while(1)
 	{
 		volatile u64 tStart = STK_u64GetElapsedTicks();
+
 		/*	scroll TFT display	*/
 		TFT_voidScroll(&LCD, tftScrollCounter);
 
-		/*	draw reading on last displayed line	*/
-		TFT_SET_BOUNDARIES(&LCD, p1, p2);
-		TFT_WRITE_CMD(&LCD, 0x2C);
-		SPI_SET_FRAME_FORMAT_16_BIT(LCD.spiUnit);
-		GPIO_SET_PIN_HIGH(LCD.A0Port, LCD.A0Pin);
-		i = 0;
-		//	draw background color until 'adcRead':
-		for (; i < ch1Val; i++)
-			SPI_TRANSMIT(LCD.spiUnit, frame.backgroundColor.code565);
-		// draw a single point with different color:
-		SPI_TRANSMIT(LCD.spiUnit, colorRed.code565);
-		//	draw background color until end of line:
-		for (; i < 127; i++)
-			SPI_TRANSMIT(LCD.spiUnit, frame.backgroundColor.code565);
+		/*	read ADC	*/
+		u8 adcRead = 127 -
+			(u8)(((u32)ADC_u16GetDataRegular(ADC_UnitNumber_1)) * 127u / 4095u);
 
+		/*	remove last drawn sample on line of index 'tftScrollCounter':	*/
+		p.x = whereIsReadPointInLine[tftScrollCounter];
+		TFT_SET_PIXEL(&LCD, p, frame.backgroundColor);
+
+		/*	draw reading on last displayed line	*/
+		whereIsReadPointInLine[tftScrollCounter] = adcRead;
+		p.x = adcRead;
+		TFT_SET_PIXEL(&LCD, p, colorRed);
+
+		/*	iteration control	*/
 		tftScrollCounter++;
 		if (tftScrollCounter == 161)
 			tftScrollCounter = 0;
-		p1.y = tftScrollCounter;
-		p2.y = tftScrollCounter;
+		p.y = tftScrollCounter;
 		//Delay_voidBlockingDelayMs(50);
+
 		volatile u64 tEnd = STK_u64GetElapsedTicks();
 		trace_printf("%u ticks, ", (u32)(tEnd - tStart));
 		trace_printf("%u us\n",
 			(u32)(8000000 * (tEnd - tStart) / RCC_u32GetBusClk(RCC_Bus_AHB)));
 	}
-}
-
-
-
-void OSC_voidEOCCallback(void)
-{
-	ch1Val = 127 -
-		(u8)(((u32)ADC_u16GetDataRegular(ADC_UnitNumber_1)) * 127u / 4095u);
 }
 
 
