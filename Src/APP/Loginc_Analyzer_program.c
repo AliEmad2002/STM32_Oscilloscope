@@ -171,7 +171,6 @@ void OSC_voidRunMainSuperLoop(void)
 	u8 tftScrollCounter = 0;
 	Point_t p = {0, 0};
 	u8 whereIsReadPointInLine[160] = {0};
-	u8 lastRead = 0;
 	while(1)
 	{
 		//volatile u64 tStart = STK_u64GetElapsedTicks();
@@ -183,34 +182,20 @@ void OSC_voidRunMainSuperLoop(void)
 		u8 adcRead = 127 -
 			(u8)(((u32)ADC_u16GetDataRegular(ADC_UnitNumber_1)) * 127u / 4095u);
 
-		u8 largest, smallest;
-		if (adcRead > lastRead) {largest = adcRead; smallest = lastRead;}
-		else {largest = lastRead; smallest = adcRead;}
+		/*	remove last drawn sample on line of index 'tftScrollCounter':	*/
+		p.x = whereIsReadPointInLine[tftScrollCounter];
+		TFT_SET_PIXEL(&LCD, p, frame.backgroundColor);
 
-		u8 i = 0;
-		for (; i < smallest; i++)
-		{
-			p.x = i;
-			TFT_SET_PIXEL(&LCD, p, frame.backgroundColor);
-		}
-		for (; i <= largest; i++)
-		{
-			p.x = i;
-			TFT_SET_PIXEL(&LCD, p, colorRed);
-		}
-		for (; i < 128; i++)
-		{
-			p.x = i;
-			TFT_SET_PIXEL(&LCD, p, frame.backgroundColor);
-		}
-
+		/*	draw reading on last displayed line	*/
+		whereIsReadPointInLine[tftScrollCounter] = adcRead;
+		p.x = adcRead;
+		TFT_SET_PIXEL(&LCD, p, colorRed);
 
 		/*	iteration control	*/
 		tftScrollCounter++;
 		if (tftScrollCounter == 161)
 			tftScrollCounter = 0;
 		p.y = tftScrollCounter;
-		lastRead = adcRead;
 		Delay_voidBlockingDelayMs(3);
 
 		/*volatile u64 tEnd = STK_u64GetElapsedTicks();
