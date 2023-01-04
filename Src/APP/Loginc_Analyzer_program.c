@@ -173,7 +173,7 @@ void OSC_voidRunMainSuperLoop(void)
 	u8 whereIsReadPointInLine[160] = {0};
 	while(1)
 	{
-		volatile u64 tStart = STK_u64GetElapsedTicks();
+		//volatile u64 tStart = STK_u64GetElapsedTicks();
 
 		/*	scroll TFT display	*/
 		TFT_voidScroll(&LCD, tftScrollCounter);
@@ -196,12 +196,12 @@ void OSC_voidRunMainSuperLoop(void)
 		if (tftScrollCounter == 161)
 			tftScrollCounter = 0;
 		p.y = tftScrollCounter;
-		//Delay_voidBlockingDelayMs(50);
+		Delay_voidBlockingDelayMs(3);
 
-		volatile u64 tEnd = STK_u64GetElapsedTicks();
+		/*volatile u64 tEnd = STK_u64GetElapsedTicks();
 		trace_printf("%u ticks, ", (u32)(tEnd - tStart));
 		trace_printf("%u us\n",
-			(u32)(8000000 * (tEnd - tStart) / RCC_u32GetBusClk(RCC_Bus_AHB)));
+			(u32)(8000000 * (tEnd - tStart) / RCC_u32GetBusClk(RCC_Bus_AHB)));*/
 	}
 }
 
