@@ -170,11 +170,11 @@ void OSC_voidInitHAL(void)
 void OSC_voidRunMainSuperLoop(void)
 {
 	register u8 tftScrollCounter = 0;
-	register Point_t p1 = {0, 0};
-	register Point_t p2 = {127, 0};
 	register u8 lastRead = 0;
 	register u8 adcRead;
 	register u8 largest, smallest;
+
+	TFT_SET_X_BOUNDARIES(&LCD, 0, 127);
 	while(1)
 	{
 		//volatile u64 tStart = STK_u64GetElapsedTicks();
@@ -189,7 +189,7 @@ void OSC_voidRunMainSuperLoop(void)
 		if (adcRead > lastRead) {largest = adcRead; smallest = lastRead;}
 		else {largest = lastRead; smallest = adcRead;}
 
-		TFT_SET_BOUNDARIES(&LCD, p1, p2);
+		TFT_SET_Y_BOUNDARIES(&LCD, tftScrollCounter, tftScrollCounter);
 		TFT_WRITE_CMD(&LCD, 0x2C);
 		SPI_SET_FRAME_FORMAT_16_BIT(LCD.spiUnit);
 		GPIO_SET_PIN_HIGH(LCD.A0Port, LCD.A0Pin);
@@ -206,15 +206,13 @@ void OSC_voidRunMainSuperLoop(void)
 		tftScrollCounter++;
 		if (tftScrollCounter == 161)
 			tftScrollCounter = 0;
-		p1.y = tftScrollCounter;
-		p2.y = tftScrollCounter;
 		lastRead = adcRead;
-		Delay_voidBlockingDelayMs(10);
+		//Delay_voidBlockingDelayMs(10);
 
 		/*volatile u64 tEnd = STK_u64GetElapsedTicks();
 		trace_printf("%u ticks, ", (u32)(tEnd - tStart));
 		trace_printf("%u us\n",
-			(u32)(8000000 * (tEnd - tStart) / RCC_u32GetBusClk(RCC_Bus_AHB)));*/
+			(u32)(8000000 * (tEnd - tStart) / RCC_u32GetBusClk(RCC_Bus_AHB)));*
 	}
 }
 
