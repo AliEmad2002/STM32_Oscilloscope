@@ -22,6 +22,7 @@
 #include "TIM_interface.h"
 #include "GPIO_interface.h"
 #include "STK_interface.h"
+#include "ADC_private.h"
 #include "ADC_interface.h"
 
 /*	HAL	*/
@@ -168,10 +169,12 @@ void OSC_voidInitHAL(void)
  */
 void OSC_voidRunMainSuperLoop(void)
 {
-	u8 tftScrollCounter = 0;
-	Point_t p = {0, 0};
-	u8 whereIsReadPointInLine[160] = {0};
-	u8 lastRead = 0;
+	register u8 tftScrollCounter = 0;
+	register Point_t p1 = {0, 0};
+	register Point_t p2 = {127, 0};
+	register u8 lastRead = 0;
+	register u8 adcRead;
+	register u8 largest, smallest;
 	while(1)
 	{
 		//volatile u64 tStart = STK_u64GetElapsedTicks();
@@ -180,38 +183,33 @@ void OSC_voidRunMainSuperLoop(void)
 		TFT_voidScroll(&LCD, tftScrollCounter);
 
 		/*	read ADC	*/
-		u8 adcRead = 127 -
+		adcRead = 127 -
 			(u8)(((u32)ADC_u16GetDataRegular(ADC_UnitNumber_1)) * 127u / 4095u);
 
-		u8 largest, smallest;
 		if (adcRead > lastRead) {largest = adcRead; smallest = lastRead;}
 		else {largest = lastRead; smallest = adcRead;}
 
+		TFT_SET_BOUNDARIES(&LCD, p1, p2);
+		TFT_WRITE_CMD(&LCD, 0x2C);
+		SPI_SET_FRAME_FORMAT_16_BIT(LCD.spiUnit);
+		GPIO_SET_PIN_HIGH(LCD.A0Port, LCD.A0Pin);
+
 		u8 i = 0;
 		for (; i < smallest; i++)
-		{
-			p.x = i;
-			TFT_SET_PIXEL(&LCD, p, frame.backgroundColor);
-		}
+			SPI_TRANSMIT(LCD.spiUnit, frame.backgroundColor.code565);
 		for (; i <= largest; i++)
-		{
-			p.x = i;
-			TFT_SET_PIXEL(&LCD, p, colorRed);
-		}
+			SPI_TRANSMIT(LCD.spiUnit, colorRed.code565);
 		for (; i < 128; i++)
-		{
-			p.x = i;
-			TFT_SET_PIXEL(&LCD, p, frame.backgroundColor);
-		}
-
+			SPI_TRANSMIT(LCD.spiUnit, frame.backgroundColor.code565);
 
 		/*	iteration control	*/
 		tftScrollCounter++;
 		if (tftScrollCounter == 161)
 			tftScrollCounter = 0;
-		p.y = tftScrollCounter;
+		p1.y = tftScrollCounter;
+		p2.y = tftScrollCounter;
 		lastRead = adcRead;
-		Delay_voidBlockingDelayMs(3);
+		Delay_voidBlockingDelayMs(10);
 
 		/*volatile u64 tEnd = STK_u64GetElapsedTicks();
 		trace_printf("%u ticks, ", (u32)(tEnd - tStart));
