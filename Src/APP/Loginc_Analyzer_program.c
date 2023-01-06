@@ -186,8 +186,16 @@ void OSC_voidRunMainSuperLoop(void)
 		adcRead = 127 -
 			(u8)(((u32)ADC_u16GetDataRegular(ADC_UnitNumber_1)) * 127u / 4095u);
 
-		if (adcRead > lastRead) {largest = adcRead; smallest = lastRead;}
-		else {largest = lastRead; smallest = adcRead;}
+		if (adcRead > lastRead)
+		{
+			largest = adcRead;
+			smallest = lastRead;
+		}
+		else
+		{
+			largest = lastRead;
+			smallest = adcRead;
+		}
 
 		TFT_SET_Y_BOUNDARIES(&LCD, tftScrollCounter, tftScrollCounter);
 		TFT_WRITE_CMD(&LCD, 0x2C);
@@ -207,12 +215,12 @@ void OSC_voidRunMainSuperLoop(void)
 		if (tftScrollCounter == 161)
 			tftScrollCounter = 0;
 		lastRead = adcRead;
-		//Delay_voidBlockingDelayMs(10);
+		Delay_voidBlockingDelayMs(50);
 
 		/*volatile u64 tEnd = STK_u64GetElapsedTicks();
 		trace_printf("%u ticks, ", (u32)(tEnd - tStart));
 		trace_printf("%u us\n",
-			(u32)(8000000 * (tEnd - tStart) / RCC_u32GetBusClk(RCC_Bus_AHB)));*
+			(u32)(8000000 * (tEnd - tStart) / RCC_u32GetBusClk(RCC_Bus_AHB)));*/
 	}
 }
 
