@@ -26,14 +26,12 @@
 #include "ADC_interface.h"
 
 /*	HAL	*/
-#include "TFT_interface.h"
+#include "TFT_interface_V1.h"
 
 /*	SELF	*/
 #include "Loginc_Analyzer_config.h"
 #include "Loginc_Analyzer_interface.h"
 
-
-#include "SPI_private.h"
 
 /*	static objects	*/
 static TFT_t LCD;
