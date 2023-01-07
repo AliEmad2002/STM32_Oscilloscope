@@ -16,6 +16,7 @@
 #include "Target_config.h"
 
 /*	MCAL	*/
+#include "DMA_interface.h"
 #include "NVIC_interface.h"
 #include "RCC_interface.h"
 #include "SPI_interface.h"
@@ -27,6 +28,7 @@
 
 /*	HAL	*/
 #include "TFT_interface_V1.h"
+#include "TFT_interface_V2.h"
 
 /*	SELF	*/
 #include "Loginc_Analyzer_config.h"
@@ -34,8 +36,7 @@
 
 
 /*	static objects	*/
-static TFT_t LCD;
-static Frame_t frame;
+static TFT2_t LCD;
 
 /*	Defines based on configuration file	*/
 #define ADC_1_CHANNEL		(ANALOG_INPUT_1_PIN % 16)
@@ -57,12 +58,6 @@ void OSC_voidInitMCAL(void)
 	RCC_voidEnablePeripheralClk(RCC_Bus_APB2, RCC_PERIPHERAL_IOPB);
 	RCC_voidEnablePeripheralClk(RCC_Bus_APB2, RCC_PERIPHERAL_AFIO);
 
-	/*	SPI	*/
-	RCC_voidEnablePeripheralClk(RCC_Bus_APB2, RCC_PERIPHERAL_SPI1);
-
-	/*	TIM	*/
-	RCC_voidEnablePeripheralClk(RCC_Bus_APB1, RCC_PERIPHERAL_TIM4);
-
 	/*	ADC	*/
 	RCC_voidEnablePeripheralClk(RCC_Bus_APB2, RCC_PERIPHERAL_ADC1);
 	RCC_voidEnablePeripheralClk(RCC_Bus_APB2, RCC_PERIPHERAL_ADC2);
@@ -78,8 +73,6 @@ void OSC_voidInitMCAL(void)
 	/**************************************************************************
 	 * GPIO init:
 	 *************************************************************************/
-	GPIO_voidSetPinGpoPushPull(LCD_A0_PIN / 16, LCD_A0_PIN % 16);
-	GPIO_voidSetPinGpoPushPull(LCD_RST_PIN / 16, LCD_RST_PIN % 16);
 	GPIO_voidSetPinGpoPushPull(LED_INDICATOR_PIN / 16, LED_INDICATOR_PIN % 16);
 	GPIO_voidSetPinMode(
 		ANALOG_INPUT_1_PIN / 16, ANALOG_INPUT_1_PIN % 16,
@@ -88,18 +81,6 @@ void OSC_voidInitMCAL(void)
 		ANALOG_INPUT_2_PIN / 16, ANALOG_INPUT_2_PIN % 16,
 		GPIO_Mode_Input_Analog);
 	GPIO_voidSetPinInputPullDown(BUTTON_1_PIN / 16, BUTTON_1_PIN % 16);
-
-	/**************************************************************************
-	 * SPI init:
-	 *************************************************************************/
-	SPI_voidInit(
-		LCD_SPI_UNIT_NUMBER, SPI_Directional_Mode_Uni, SPI_DataFrameFormat_8bit,
-		SPI_FrameDirection_MSB_First, SPI_Prescaler_2, SPI_Mode_Master,
-		SPI_ClockPolarity_0Idle, SPI_ClockPhase_CaptureFirst);
-
-	SPI_voidInitPins(LCD_SPI_UNIT_NUMBER, LCD_SPI_AFIO_MAP, 0, 0, 1);
-
-	SPI_ENABLE_PERIPHERAL(LCD_SPI_UNIT_NUMBER);
 
 	/**************************************************************************
 	 * ADC init:
@@ -142,24 +123,26 @@ void OSC_voidInitHAL(void)
 	/**************************************************************************
 	 * LCD init:
 	 *************************************************************************/
-	TFT_voidInitBrightnessControl(
-		&LCD, LCD_BRIGHTNESS_CONTROL_TIMER_UNIT_NUMBER,
+	TFT2_voidInit(
+		&LCD, LCD_SPI_UNIT_NUMBER, LCD_SPI_AFIO_MAP, LCD_RST_PIN, LCD_A0_PIN,
+		LCD_BRIGHTNESS_CONTROL_TIMER_UNIT_NUMBER,
 		LCD_BRIGHTNESS_CONTROL_TIMER_CHANNEL,
-		LCD_BRIGHTNESS_CONTROL_TIMER_FREQ_HZ,
 		LCD_BRIGHTNESS_CONTROL_TIMER_AFIO_MAP);
 
 	/*	set maximum brightness by default	*/
-	TFT_SET_BRIGHTNESS(&LCD, POW_TWO(16) - 1);
+	TFT2_voidSetBrightness(&LCD, POW_TWO(16) - 1);
 
-	TFT_voidInit(&LCD, LCD_SPI_UNIT_NUMBER, LCD_RST_PIN, LCD_A0_PIN);
+	TFT2_SET_X_BOUNDARIES(&LCD, 0, 127);
+	TFT2_SET_Y_BOUNDARIES(&LCD, 0, 159);
+	u8 foo = 127;
 
-	/**************************************************************************
-	 * frame init:
-	 *************************************************************************/
-	IMG_voidinitFrame(&frame, colorBlack);
-	TFT_voidDrawFrame(&LCD, &frame);
-	TFT_voidDrawFrame(&LCD, &frame);
-	TFT_voidInitScroll(&LCD, 0, 162, 0);
+	TFT2_WRITE_CMD(&LCD, TFT_CMD_MEM_WRITE);
+
+	TFT2_ENTER_DATA_MODE(&LCD);
+
+	TFT2_voidFillDMA(&LCD, &foo, 128 * 160);
+
+	//Delay_voidBlockingDelayMs(2000);
 }
 
 /*
@@ -172,13 +155,17 @@ void OSC_voidRunMainSuperLoop(void)
 	register u8 adcRead;
 	register u8 largest, smallest;
 
-	TFT_SET_X_BOUNDARIES(&LCD, 0, 127);
+	TFT2_voidWaitCurrentDataTransfer(&LCD);
+DMA_voidSelectPriority(DMA_UnitNumber_1, LCD.dmaCh, DMA_Priority_VeryHigh);
+	TFT2_SET_X_BOUNDARIES(&LCD, 0, 127);
+	u8 foo1 = 255;
+	u8 foo2 = 0;
 	while(1)
 	{
-		//volatile u64 tStart = STK_u64GetElapsedTicks();
+		TFT2_voidWaitCurrentDataTransfer(&LCD);
 
 		/*	scroll TFT display	*/
-		TFT_voidScroll(&LCD, tftScrollCounter);
+		TFT2_voidScroll(&LCD, tftScrollCounter);
 
 		/*	read ADC	*/
 		adcRead = 127 -
@@ -195,19 +182,20 @@ void OSC_voidRunMainSuperLoop(void)
 			smallest = adcRead;
 		}
 
-		TFT_SET_Y_BOUNDARIES(&LCD, tftScrollCounter, tftScrollCounter);
-		TFT_WRITE_CMD(&LCD, 0x2C);
-		SPI_SET_FRAME_FORMAT_16_BIT(LCD.spiUnit);
-		GPIO_SET_PIN_HIGH(LCD.A0Port, LCD.A0Pin);
+		TFT2_SET_Y_BOUNDARIES(&LCD, tftScrollCounter, tftScrollCounter);
 
-		u8 i = 0;
-		for (; i < smallest; i++)
-			SPI_TRANSMIT(LCD.spiUnit, frame.backgroundColor.code565);
-		for (; i <= largest; i++)
-			SPI_TRANSMIT(LCD.spiUnit, colorRed.code565);
-		for (; i < 128; i++)
-			SPI_TRANSMIT(LCD.spiUnit, frame.backgroundColor.code565);
+		TFT2_WRITE_CMD(&LCD, TFT_CMD_MEM_WRITE);
 
+		TFT2_ENTER_DATA_MODE(&LCD);
+		volatile u64 tStart = STK_u64GetElapsedTicks();
+		TFT2_voidFillDMA(&LCD, &foo2, smallest);
+
+		TFT2_voidFillDMA(
+			&LCD, &foo1, largest - smallest);
+
+		TFT2_voidFillDMA(
+			&LCD, &foo2, 128 - largest);
+		volatile u64 tEnd = STK_u64GetElapsedTicks();
 		/*	iteration control	*/
 		tftScrollCounter++;
 		if (tftScrollCounter == 161)
@@ -215,10 +203,10 @@ void OSC_voidRunMainSuperLoop(void)
 		lastRead = adcRead;
 		Delay_voidBlockingDelayMs(50);
 
-		/*volatile u64 tEnd = STK_u64GetElapsedTicks();
+
 		trace_printf("%u ticks, ", (u32)(tEnd - tStart));
 		trace_printf("%u us\n",
-			(u32)(8000000 * (tEnd - tStart) / RCC_u32GetBusClk(RCC_Bus_AHB)));*/
+			(u32)(1000000 * (tEnd - tStart) / RCC_u32GetBusClk(RCC_Bus_AHB)));
 	}
 }
 

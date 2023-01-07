@@ -8,6 +8,10 @@
 /*	LIB	*/
 #include "Std_Types.h"
 #include "Bit_Math.h"
+#include "Delay_interface.h"
+
+#include "RCC_interface.h"
+#include "TIM_interface.h"
 
 /*	APP	*/
 #include "Loginc_Analyzer_interface.h"
