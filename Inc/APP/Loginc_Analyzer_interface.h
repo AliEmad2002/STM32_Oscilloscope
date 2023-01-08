@@ -21,9 +21,9 @@ void OSC_voidInitMCAL(void);
  */
 void OSC_voidInitHAL(void);
 
-/*
- * runs main super loop (no OS version)
- */
+///*
+// * runs main super loop (no OS version)
+// */
 void OSC_voidRunMainSuperLoop(void);
 
 

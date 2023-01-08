@@ -14,6 +14,7 @@
 #include "Colors.h"
 #include "Debug_active.h"
 #include "Target_config.h"
+#include "Error_Handler_interface.h"
 
 /*	MCAL	*/
 #include "DMA_interface.h"
@@ -34,13 +35,40 @@
 #include "Loginc_Analyzer_config.h"
 #include "Loginc_Analyzer_interface.h"
 
+/*	enum that describes the different states of line drawing	*/
+typedef enum{
+	OSC_LineDrawingState_1,	// means that the last started operation is:
+							// scroll, read ADC, set new drawing boundaries
+							// and draw black segment from 0 to
+							// 'OSC_smallest' - 1.
+
+	OSC_LineDrawingState_2,	// means that the last started operation is:
+							// Drawing red segment from 'OSC_smallest' to
+							// 'OSC_largeest'.
+
+	OSC_LineDrawingState_3,	// means that the last started operation is:
+							// Drawing red segment from 'OSC_largeest' + 1 to
+							// 127.
+}OSC_LineDrawingState_t;
 
 /*	static objects	*/
 static TFT2_t LCD;
 
+static u8 OSC_smallest = 0;		// these two variables represent smallest and
+static u8 OSC_largest = 0;		// largest points in the current line's active
+								// (red) segment.
+
+static OSC_LineDrawingState_t drawingState = OSC_LineDrawingState_3;
+
+static u8 tftScrollCounter = 0;
+
 /*	Defines based on configuration file	*/
 #define ADC_1_CHANNEL		(ANALOG_INPUT_1_PIN % 16)
 #define ADC_2_CHANNEL		(ANALOG_INPUT_2_PIN % 16)
+
+/*	ISR callbacks	*/
+void OSC_voidDMATransferCompleteCallback(void);
+void OSC_voidTimToStartDrawingNextLineCallback(void);
 
 /*
  * Inits all (MCAL) hardware resources configured in "Loginc_Analyzer_configh.h"
@@ -111,7 +139,7 @@ void OSC_voidInitMCAL(void)
 	/**************************************************************************
 	 * NVIC init:
 	 *************************************************************************/
-
+	NVIC_voidEnableInterrupt(NVIC_Interrupt_DMA1_Ch3);
 }
 
 /*
@@ -132,6 +160,7 @@ void OSC_voidInitHAL(void)
 	/*	set maximum brightness by default	*/
 	TFT2_voidSetBrightness(&LCD, POW_TWO(16) - 1);
 
+	/*	display startup screen	*/
 	TFT2_SET_X_BOUNDARIES(&LCD, 0, 127);
 	TFT2_SET_Y_BOUNDARIES(&LCD, 0, 159);
 	u8 foo = 127;
@@ -141,76 +170,122 @@ void OSC_voidInitHAL(void)
 	TFT2_ENTER_DATA_MODE(&LCD);
 
 	TFT2_voidFillDMA(&LCD, &foo, 128 * 160);
+	TFT2_voidWaitCurrentDataTransfer(&LCD);
+	TFT2_voidClearDMATCFlag(&LCD);
+	TFT2_voidDisableDMAChannel(&LCD);
 
-	//Delay_voidBlockingDelayMs(2000);
+	/*	enable interrupt (to be used for less drawing overhead)	*/
+	TFT2_voidSetDMATransferCompleteCallback(
+		&LCD, OSC_voidDMATransferCompleteCallback);
+
+	TFT2_voidEnableDMATransferCompleteInterrupt(&LCD);
+
+	/*	give user chance to see startup screen	*/
+	Delay_voidBlockingDelayMs(1500);
 }
 
-/*
- * runs main super loop (no OS version)
- */
 void OSC_voidRunMainSuperLoop(void)
 {
-	register u8 tftScrollCounter = 0;
-	register u8 lastRead = 0;
-	register u8 adcRead;
-	register u8 largest, smallest;
-
-	TFT2_voidWaitCurrentDataTransfer(&LCD);
-DMA_voidSelectPriority(DMA_UnitNumber_1, LCD.dmaCh, DMA_Priority_VeryHigh);
-	TFT2_SET_X_BOUNDARIES(&LCD, 0, 127);
-	u8 foo1 = 255;
-	u8 foo2 = 0;
-	while(1)
+	while (1)
 	{
-		TFT2_voidWaitCurrentDataTransfer(&LCD);
-
-		/*	scroll TFT display	*/
-		TFT2_voidScroll(&LCD, tftScrollCounter);
-
-		/*	read ADC	*/
-		adcRead = 127 -
-			(u8)(((u32)ADC_u16GetDataRegular(ADC_UnitNumber_1)) * 127u / 4095u);
-
-		if (adcRead > lastRead)
-		{
-			largest = adcRead;
-			smallest = lastRead;
-		}
-		else
-		{
-			largest = lastRead;
-			smallest = adcRead;
-		}
-
-		TFT2_SET_Y_BOUNDARIES(&LCD, tftScrollCounter, tftScrollCounter);
-
-		TFT2_WRITE_CMD(&LCD, TFT_CMD_MEM_WRITE);
-
-		TFT2_ENTER_DATA_MODE(&LCD);
-		volatile u64 tStart = STK_u64GetElapsedTicks();
-		TFT2_voidFillDMA(&LCD, &foo2, smallest);
-
-		TFT2_voidFillDMA(
-			&LCD, &foo1, largest - smallest);
-
-		TFT2_voidFillDMA(
-			&LCD, &foo2, 128 - largest);
-		volatile u64 tEnd = STK_u64GetElapsedTicks();
-		/*	iteration control	*/
-		tftScrollCounter++;
-		if (tftScrollCounter == 161)
-			tftScrollCounter = 0;
-		lastRead = adcRead;
-		Delay_voidBlockingDelayMs(50);
-
-
-		trace_printf("%u ticks, ", (u32)(tEnd - tStart));
-		trace_printf("%u us\n",
-			(u32)(1000000 * (tEnd - tStart) / RCC_u32GetBusClk(RCC_Bus_AHB)));
+		OSC_voidTimToStartDrawingNextLineCallback();
+		Delay_voidBlockingDelayUs(100);
 	}
 }
 
+/*
+ * this function is called whenever DMA finishes a transfer to TFT, it starts
+ * the next "OSC_LineDrawingState_t" operation, and clears DMA completion flags.
+ *
+ */
+void OSC_voidDMATransferCompleteCallback(void)
+{
+	/*
+	 * the word 'state' in the following comments is defined in description of
+	 * "OSC_LineDrawingState_t" enum definition)
+	 */
+	switch(drawingState)
+	{
+	case OSC_LineDrawingState_1: // case the just ended operation is of state 1.
+		/*	start state 2	*/
+		TFT2_voidFillDMA(&LCD, &colorRedU8Val, OSC_largest - OSC_smallest + 1 + 2);
+		/*	update state	*/
+		drawingState = OSC_LineDrawingState_2;
+	break;
 
+	case OSC_LineDrawingState_2: // case the just ended operation is of state 2.
+		/*	start state 3	*/
+		TFT2_voidFillDMA(&LCD, &colorBlackU8Val, 125 - OSC_largest + 2);
+		/*	update state	*/
+		drawingState = OSC_LineDrawingState_3;
+	break;
+
+	case OSC_LineDrawingState_3: // case the just ended operation is of state 3.
+		TFT2_voidClearDMATCFlag(&LCD);
+		TFT2_voidDisableDMAChannel(&LCD);
+		/*	scroll TFT display	*/
+		TFT2_voidScroll(&LCD, tftScrollCounter);
+	break;
+	}
+}
+
+/*
+ * this function is called to start executing what's mentioned in
+ * "OSC_LineDrawingState_1" description.
+ *
+ * It is executed periodically as what user had configured time axis.
+ *
+ * minimum call rate of this function is important, as executing it in a high
+ * rate would overlap drawing of multiple lines!
+ * minimum call rate when F_SYS = 72MHz and using default TFT settings is about
+ * 90~100 us.
+ */
+void OSC_voidTimToStartDrawingNextLineCallback(void)
+{
+	static u8 lastRead = 0;
+
+	/*
+	 * check that previous line drawing is done. otherwise execute errorHandler.
+	 */
+	u16 numberOfData = DMA_u16GetNumberOfData(DMA_UnitNumber_1, LCD.dmaCh);
+	if (drawingState != OSC_LineDrawingState_3 || numberOfData != 0)
+	{
+		ErrorHandler_voidExecute(9);
+		return;
+	}
+
+	/*	update state	*/
+	drawingState = OSC_LineDrawingState_1;
+
+	/*	read ADC	*/
+	u8 adcRead = 125 -
+		(u8)(((u32)ADC_u16GetDataRegular(ADC_UnitNumber_1)) * 125u / 4095u);
+
+	if (adcRead > lastRead)
+	{
+		OSC_largest = adcRead;
+		OSC_smallest = lastRead;
+	}
+	else
+	{
+		OSC_largest = lastRead;
+		OSC_smallest = adcRead;
+	}
+
+	TFT2_SET_Y_BOUNDARIES(&LCD, tftScrollCounter, tftScrollCounter);
+
+	TFT2_WRITE_CMD(&LCD, TFT_CMD_MEM_WRITE);
+
+	TFT2_ENTER_DATA_MODE(&LCD);
+
+	TFT2_voidFillDMA(&LCD, &colorBlackU8Val, OSC_smallest - 1 + 2);
+
+	/*	iteration control	*/
+	tftScrollCounter++;
+	if (tftScrollCounter == 161)
+		tftScrollCounter = 0;
+	lastRead = adcRead;
+}
 
 
 
