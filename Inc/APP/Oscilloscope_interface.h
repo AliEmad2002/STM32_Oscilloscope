@@ -1,12 +1,12 @@
 /*
- * Loginc_Analyzer_interface.h
+ * Oscilloscope_interface.h
  *
  *  Created on: Nov 25, 2022
  *      Author: Ali Emad Ali
  */
 
-#ifndef LOGINC_ANALYZER_INTERFACE_H_
-#define LOGINC_ANALYZER_INTERFACE_H_
+#ifndef OSCILLOSCOPE_INTERFACE_H_
+#define OSCILLOSCOPE_INTERFACE_H_
 
 
 /*
@@ -27,4 +27,4 @@ void OSC_voidInitHAL(void);
 void OSC_voidRunMainSuperLoop(void);
 
 
-#endif /* LOGINC_ANALYZER_INTERFACE_H_ */
+#endif /* OSCILLOSCOPE_INTERFACE_H_ */

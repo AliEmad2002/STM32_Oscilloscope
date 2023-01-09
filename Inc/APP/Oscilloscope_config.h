@@ -1,12 +1,12 @@
 /*
- * Loginc_Analyzer_config.h
+ * Oscilloscope_config.h
  *
  *  Created on: Nov 25, 2022
  *      Author: Ali Emad Ali
  */
 
-#ifndef LOGINC_ANALYZER_CONFIG_H_
-#define LOGINC_ANALYZER_CONFIG_H_
+#ifndef OSCILLOSCOPE_CONFIG_H_
+#define OSCILLOSCOPE_CONFIG_H_
 
 /*	LCD	*/
 #define LCD_A0_PIN									GPIO_Pin_A0
@@ -19,6 +19,8 @@
 #define LCD_BRIGHTNESS_CONTROL_TIMER_CHANNEL		TIM_Channel_4
 #define LCD_BRIGHTNESS_CONTROL_TIMER_AFIO_MAP		0
 #define LCD_BRIGHTNESS_CONTROL_TIMER_FREQ_HZ		100
+
+#define LCD_REFRESH_TRIGGER_TIMER_UNIT_NUMBER		3
 
 /*	Running indication LED	*/
 #define LED_INDICATOR_PIN							GPIO_Pin_B11
@@ -35,7 +37,7 @@
 #define ADC_SAMPLE_TIME								ADC_SampleTime_1_5
 
 
-#endif /* LOGINC_ANALYZER_CONFIG_H_ */
+#endif /* OSCILLOSCOPE_CONFIG_H_ */
 
 
 

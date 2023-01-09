@@ -1,5 +1,5 @@
 /*
- * Loginc_Analyzer_program.c
+ * Oscilloscope_program.c
  *
  *  Created on: Nov 25, 2022
  *      Author: Ali Emad Ali
@@ -32,8 +32,8 @@
 #include "TFT_interface_V2.h"
 
 /*	SELF	*/
-#include "Loginc_Analyzer_config.h"
-#include "Loginc_Analyzer_interface.h"
+#include "Oscilloscope_config.h"
+#include "Oscilloscope_interface.h"
 
 /*	enum that describes the different states of line drawing	*/
 typedef enum{
@@ -61,6 +61,9 @@ static u8 OSC_largest = 0;		// largest points in the current line's active
 static OSC_LineDrawingState_t drawingState = OSC_LineDrawingState_3;
 
 static u8 tftScrollCounter = 0;
+
+static u64 lineDrawingRatemHzMin;
+const u64 lineDrawingRatemHzMax = 10000000;
 
 /*	Defines based on configuration file	*/
 #define ADC_1_CHANNEL		(ANALOG_INPUT_1_PIN % 16)
@@ -137,9 +140,15 @@ void OSC_voidInitMCAL(void)
 	ADC_voidStartSWConversionRegular(ADC_UnitNumber_1);
 
 	/**************************************************************************
+	 * TIM init:
+	 *************************************************************************/
+
+
+	/**************************************************************************
 	 * NVIC init:
 	 *************************************************************************/
 	NVIC_voidEnableInterrupt(NVIC_Interrupt_DMA1_Ch3);
+	NVIC_voidEnableInterrupt(NVIC_Interrupt_TIM3);
 }
 
 /*
@@ -182,14 +191,21 @@ void OSC_voidInitHAL(void)
 
 	/*	give user chance to see startup screen	*/
 	Delay_voidBlockingDelayMs(1500);
+
+	lineDrawingRatemHzMin = TIM_u64InitTimTrigger(
+		LCD_REFRESH_TRIGGER_TIMER_UNIT_NUMBER, lineDrawingRatemHzMax,
+		lineDrawingRatemHzMax, OSC_voidTimToStartDrawingNextLineCallback);
+
 }
 
 void OSC_voidRunMainSuperLoop(void)
 {
+	Delay_voidBlockingDelayMs(5000);
+	TIM_u64SetFreqByChangingArr(
+		LCD_REFRESH_TRIGGER_TIMER_UNIT_NUMBER, 10000);
 	while (1)
 	{
-		OSC_voidTimToStartDrawingNextLineCallback();
-		Delay_voidBlockingDelayUs(100);
+
 	}
 }
 
@@ -285,6 +301,9 @@ void OSC_voidTimToStartDrawingNextLineCallback(void)
 	if (tftScrollCounter == 161)
 		tftScrollCounter = 0;
 	lastRead = adcRead;
+
+	TIM_voidClearStatusFlag(
+		LCD_REFRESH_TRIGGER_TIMER_UNIT_NUMBER, TIM_Status_Update);
 }
 
 

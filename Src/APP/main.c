@@ -11,12 +11,7 @@
 #include "Delay_interface.h"
 
 #include "RCC_interface.h"
-#include "TIM_interface.h"
-
-/*	APP	*/
-#include "Loginc_Analyzer_interface.h"
-
-
+#include "Oscilloscope_interface.h"
 
 int main(void)
 {
