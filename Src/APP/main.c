@@ -17,7 +17,7 @@ int main(void)
 {
 	OSC_voidInitMCAL();
 	OSC_voidInitHAL();
-	OSC_voidRunMainSuperLoop();
+	OSC_voidMainSuperLoop();
 
 	while(1)
 	{

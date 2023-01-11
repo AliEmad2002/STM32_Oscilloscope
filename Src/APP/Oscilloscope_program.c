@@ -74,7 +74,7 @@ void OSC_voidDMATransferCompleteCallback(void);
 void OSC_voidTimToStartDrawingNextLineCallback(void);
 
 /*
- * Inits all (MCAL) hardware resources configured in "Loginc_Analyzer_configh.h"
+ * Inits all (MCAL) hardware resources configured in "Oscilloscope_configh.h"
  * file.
  */
 void OSC_voidInitMCAL(void)
@@ -142,18 +142,45 @@ void OSC_voidInitMCAL(void)
 	/**************************************************************************
 	 * TIM init:
 	 *************************************************************************/
-
+	/*	start frequency measurement	*/
+	TIM_voidInitFreqAndDutyMeasurement(
+		FREQ_MEASURE_TIMER_UNIT_NUMBER, FREQ_MEASURE_TIMER_UNIT_AFIO_MAP, 100);
 
 	/**************************************************************************
 	 * NVIC init:
 	 *************************************************************************/
-	NVIC_voidEnableInterrupt(NVIC_Interrupt_DMA1_Ch3);
-	NVIC_voidEnableInterrupt(NVIC_Interrupt_TIM3);
+	switch(LCD_REFRESH_TRIGGER_TIMER_UNIT_NUMBER)
+	{
+	case 1:
+		NVIC_voidEnableInterrupt(NVIC_Interrupt_TIM1UP);
+		break;
+	case 2:
+		NVIC_voidEnableInterrupt(NVIC_Interrupt_TIM2);
+		break;
+	case 3:
+		NVIC_voidEnableInterrupt(NVIC_Interrupt_TIM3);
+		break;
+	case 4:
+		NVIC_voidEnableInterrupt(NVIC_Interrupt_TIM4);
+		break;
+	case 5:
+		NVIC_voidEnableInterrupt(NVIC_Interrupt_TIM5);
+		break;
+	case 6:
+		NVIC_voidEnableInterrupt(NVIC_Interrupt_TIM6);
+		break;
+	case 7:
+		NVIC_voidEnableInterrupt(NVIC_Interrupt_TIM7);
+		break;
+	case 8:
+		NVIC_voidEnableInterrupt(NVIC_Interrupt_TIM8UP);
+		break;
+	}
 }
 
 /*
- * Inits all (HAL) hardware resources configured in "Loginc_Analyzer_configh.h"
- * file, and static objects defined in "Loginc_Analyzer_program.c".
+ * Inits all (HAL) hardware resources configured in "Oscilloscope_configh.h"
+ * file, and static objects defined in "Oscilloscope_program.c".
  */
 void OSC_voidInitHAL(void)
 {
@@ -167,18 +194,17 @@ void OSC_voidInitHAL(void)
 		LCD_BRIGHTNESS_CONTROL_TIMER_AFIO_MAP);
 
 	/*	set maximum brightness by default	*/
-	TFT2_voidSetBrightness(&LCD, POW_TWO(16) - 1);
+	TFT2_voidSetBrightness(&LCD, POW_TWO(13));
 
 	/*	display startup screen	*/
 	TFT2_SET_X_BOUNDARIES(&LCD, 0, 127);
 	TFT2_SET_Y_BOUNDARIES(&LCD, 0, 159);
-	u8 foo = 127;
 
 	TFT2_WRITE_CMD(&LCD, TFT_CMD_MEM_WRITE);
 
 	TFT2_ENTER_DATA_MODE(&LCD);
 
-	TFT2_voidFillDMA(&LCD, &foo, 128 * 160);
+	TFT2_voidFillDMA(&LCD, &colorBlackU8Val, 128 * 160);
 	TFT2_voidWaitCurrentDataTransfer(&LCD);
 	TFT2_voidClearDMATCFlag(&LCD);
 	TFT2_voidDisableDMAChannel(&LCD);
@@ -190,22 +216,27 @@ void OSC_voidInitHAL(void)
 	TFT2_voidEnableDMATransferCompleteInterrupt(&LCD);
 
 	/*	give user chance to see startup screen	*/
-	Delay_voidBlockingDelayMs(1500);
+	//Delay_voidBlockingDelayMs(1500);
 
+	/*	start drawing	*/
 	lineDrawingRatemHzMin = TIM_u64InitTimTrigger(
-		LCD_REFRESH_TRIGGER_TIMER_UNIT_NUMBER, lineDrawingRatemHzMax,
+		LCD_REFRESH_TRIGGER_TIMER_UNIT_NUMBER, lineDrawingRatemHzMax / 100,
 		lineDrawingRatemHzMax, OSC_voidTimToStartDrawingNextLineCallback);
 
 }
 
-void OSC_voidRunMainSuperLoop(void)
+/*	main super loop (no OS version)	*/
+void OSC_voidMainSuperLoop(void)
 {
-	Delay_voidBlockingDelayMs(5000);
+	/*Delay_voidBlockingDelayMs(5000);
 	TIM_u64SetFreqByChangingArr(
-		LCD_REFRESH_TRIGGER_TIMER_UNIT_NUMBER, 10000);
+		LCD_REFRESH_TRIGGER_TIMER_UNIT_NUMBER, 10000);*/
+	volatile u64 freq;
 	while (1)
 	{
-
+		Delay_voidBlockingDelayMs(500);
+		freq = TIM_u64GetFrequencyMeasured(
+			FREQ_MEASURE_TIMER_UNIT_NUMBER);
 	}
 }
 

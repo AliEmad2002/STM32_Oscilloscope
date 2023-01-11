@@ -10,21 +10,19 @@
 
 
 /*
- * Inits all (MCAL) hardware resources configured in "Loginc_Analyzer_configh.h"
+ * Inits all (MCAL) hardware resources configured in "Oscilloscope_configh.h"
  * file.
  */
 void OSC_voidInitMCAL(void);
 
 /*
- * Inits all (HAL) hardware resources configured in "Loginc_Analyzer_configh.h"
- * file, and static objects defined in "Loginc_Analyzer_program.c".
+ * Inits all (HAL) hardware resources configured in "Oscilloscope_configh.h"
+ * file, and static objects defined in "Oscilloscope_program.c".
  */
 void OSC_voidInitHAL(void);
 
-///*
-// * runs main super loop (no OS version)
-// */
-void OSC_voidRunMainSuperLoop(void);
+/*	main super loop (no OS version)	*/
+void OSC_voidMainSuperLoop(void);
 
 
 #endif /* OSCILLOSCOPE_INTERFACE_H_ */

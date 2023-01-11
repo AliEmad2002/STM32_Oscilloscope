@@ -36,6 +36,9 @@
 // must be an element of the enum: 'ADC_SampleTime_t'
 #define ADC_SAMPLE_TIME								ADC_SampleTime_1_5
 
+/*	frequency measurement	*/
+#define FREQ_MEASURE_TIMER_UNIT_NUMBER				2
+#define FREQ_MEASURE_TIMER_UNIT_AFIO_MAP			1
 
 #endif /* OSCILLOSCOPE_CONFIG_H_ */
 
