@@ -18,6 +18,7 @@
 
 /*	MCAL	*/
 #include "DMA_interface.h"
+#include "SCB_interface.h"
 #include "NVIC_interface.h"
 #include "RCC_interface.h"
 #include "SPI_interface.h"
@@ -61,9 +62,13 @@ static u8 OSC_largest = 0;		// largest points in the current line's active
 static OSC_LineDrawingState_t drawingState = OSC_LineDrawingState_3;
 
 static u8 tftScrollCounter = 0;
+static u8 tftScrollCounterMax = 128;
 
 static u64 lineDrawingRatemHzMin;
 const u64 lineDrawingRatemHzMax = 10000000;
+
+/*	binary semaphore for TFT interfacing line	*/
+static b8 tftIsUnderUsage = false;
 
 /*	Defines based on configuration file	*/
 #define ADC_1_CHANNEL		(ANALOG_INPUT_1_PIN % 16)
@@ -147,35 +152,36 @@ void OSC_voidInitMCAL(void)
 		FREQ_MEASURE_TIMER_UNIT_NUMBER, FREQ_MEASURE_TIMER_UNIT_AFIO_MAP, 100);
 
 	/**************************************************************************
+	 * SCB init:
+	 *************************************************************************/
+	/*	configure number of NVIC groups and sub groups	*/
+	SCB_voidSetPriorityGroupsAndSubGroupsNumber(SCB_PRIGROUP_group4_sub4);
+
+	/**************************************************************************
 	 * NVIC init:
 	 *************************************************************************/
-	switch(LCD_REFRESH_TRIGGER_TIMER_UNIT_NUMBER)
-	{
-	case 1:
-		NVIC_voidEnableInterrupt(NVIC_Interrupt_TIM1UP);
-		break;
-	case 2:
-		NVIC_voidEnableInterrupt(NVIC_Interrupt_TIM2);
-		break;
-	case 3:
-		NVIC_voidEnableInterrupt(NVIC_Interrupt_TIM3);
-		break;
-	case 4:
-		NVIC_voidEnableInterrupt(NVIC_Interrupt_TIM4);
-		break;
-	case 5:
-		NVIC_voidEnableInterrupt(NVIC_Interrupt_TIM5);
-		break;
-	case 6:
-		NVIC_voidEnableInterrupt(NVIC_Interrupt_TIM6);
-		break;
-	case 7:
-		NVIC_voidEnableInterrupt(NVIC_Interrupt_TIM7);
-		break;
-	case 8:
-		NVIC_voidEnableInterrupt(NVIC_Interrupt_TIM8UP);
-		break;
-	}
+	NVIC_Interrupt_t timTrigLineDrawingInterrupt =
+			TIM_u8GetUpdateEventInterruptNumber(
+				LCD_REFRESH_TRIGGER_TIMER_UNIT_NUMBER);
+
+	NVIC_Interrupt_t timTrigInfoDrawingInterrupt =
+			TIM_u8GetUpdateEventInterruptNumber(
+				LCD_INFO_DRAWING_TRIGGER_TIMER_UNIT_NUMBER);
+
+	NVIC_voidEnableInterrupt(timTrigLineDrawingInterrupt);
+	NVIC_voidEnableInterrupt(timTrigInfoDrawingInterrupt);
+
+	NVIC_voidSetInterruptPriority(
+		timTrigLineDrawingInterrupt, 0, 0);
+
+	NVIC_voidSetInterruptPriority(
+		NVIC_Interrupt_DMA1_Ch3, 0, 0);												////// don't forget to make this configurable.
+
+	NVIC_voidSetInterruptPriority(
+		timTrigInfoDrawingInterrupt, 1, 0);
+
+
+
 }
 
 /*
@@ -218,6 +224,14 @@ void OSC_voidInitHAL(void)
 	/*	give user chance to see startup screen	*/
 	//Delay_voidBlockingDelayMs(1500);
 
+	/*
+	 * split display to two parts, large one for displaying signal (0-130),
+	 * and small one for signal data (131-160). (based on saved user settings).
+	 *
+	 * The split can be cancelled from settings.
+	 */
+	TFT2_voidInitScroll(&LCD, 0, 130, 32);
+
 	/*	start drawing	*/
 	lineDrawingRatemHzMin = TIM_u64InitTimTrigger(
 		LCD_REFRESH_TRIGGER_TIMER_UNIT_NUMBER, lineDrawingRatemHzMax / 100,
@@ -255,14 +269,14 @@ void OSC_voidDMATransferCompleteCallback(void)
 	{
 	case OSC_LineDrawingState_1: // case the just ended operation is of state 1.
 		/*	start state 2	*/
-		TFT2_voidFillDMA(&LCD, &colorRedU8Val, OSC_largest - OSC_smallest + 1 + 2);
+		TFT2_voidFillDMA(&LCD, &colorRedU8Val, OSC_largest - OSC_smallest + 1);
 		/*	update state	*/
 		drawingState = OSC_LineDrawingState_2;
 	break;
 
 	case OSC_LineDrawingState_2: // case the just ended operation is of state 2.
 		/*	start state 3	*/
-		TFT2_voidFillDMA(&LCD, &colorBlackU8Val, 125 - OSC_largest + 2);
+		TFT2_voidFillDMA(&LCD, &colorBlackU8Val, 125 - OSC_largest);
 		/*	update state	*/
 		drawingState = OSC_LineDrawingState_3;
 	break;
@@ -272,6 +286,8 @@ void OSC_voidDMATransferCompleteCallback(void)
 		TFT2_voidDisableDMAChannel(&LCD);
 		/*	scroll TFT display	*/
 		TFT2_voidScroll(&LCD, tftScrollCounter);
+		/*	release semaphore	*/
+		tftIsUnderUsage = false;
 	break;
 	}
 }
@@ -294,12 +310,14 @@ void OSC_voidTimToStartDrawingNextLineCallback(void)
 	/*
 	 * check that previous line drawing is done. otherwise execute errorHandler.
 	 */
-	u16 numberOfData = DMA_u16GetNumberOfData(DMA_UnitNumber_1, LCD.dmaCh);
-	if (drawingState != OSC_LineDrawingState_3 || numberOfData != 0)
+	if (tftIsUnderUsage == true)
 	{
 		ErrorHandler_voidExecute(9);
 		return;
 	}
+
+	/*	take semaphore	*/
+	tftIsUnderUsage = true;
 
 	/*	update state	*/
 	drawingState = OSC_LineDrawingState_1;
@@ -324,12 +342,12 @@ void OSC_voidTimToStartDrawingNextLineCallback(void)
 	TFT2_WRITE_CMD(&LCD, TFT_CMD_MEM_WRITE);
 
 	TFT2_ENTER_DATA_MODE(&LCD);
-
-	TFT2_voidFillDMA(&LCD, &colorBlackU8Val, OSC_smallest - 1 + 2);
+									// i.e.: OSC_smallest - 1 shifted up by 2
+	TFT2_voidFillDMA(&LCD, &colorBlackU8Val, OSC_smallest + 1);
 
 	/*	iteration control	*/
 	tftScrollCounter++;
-	if (tftScrollCounter == 161)
+	if (tftScrollCounter > tftScrollCounterMax)
 		tftScrollCounter = 0;
 	lastRead = adcRead;
 
