@@ -23,6 +23,7 @@
 #define LCD_REFRESH_TRIGGER_TIMER_UNIT_NUMBER		1
 
 #define LCD_INFO_DRAWING_TRIGGER_TIMER_UNIT_NUMBER	3
+#define LCD_INFO_DRAWING_TRIGGER_FREQUENCY_MILLI_HZ	2000	// once every 0.5 second
 
 /*	Running indication LED	*/
 #define LED_INDICATOR_PIN							GPIO_Pin_B11
@@ -41,6 +42,14 @@
 /*	frequency measurement	*/
 #define FREQ_MEASURE_TIMER_UNIT_NUMBER				2
 #define FREQ_MEASURE_TIMER_UNIT_AFIO_MAP			1
+
+
+/*******************************************************************************
+ * run time changeable settings:
+ ******************************************************************************/
+static u64 lineDrawingRatemHzMin;
+
+static u8 tftScrollCounterMax = 128;
 
 #endif /* OSCILLOSCOPE_CONFIG_H_ */
 

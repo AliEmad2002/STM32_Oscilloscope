@@ -62,21 +62,35 @@ static u8 OSC_largest = 0;		// largest points in the current line's active
 static OSC_LineDrawingState_t drawingState = OSC_LineDrawingState_3;
 
 static u8 tftScrollCounter = 0;
-static u8 tftScrollCounterMax = 128;
-
-static u64 lineDrawingRatemHzMin;
-const u64 lineDrawingRatemHzMax = 10000000;
 
 /*	binary semaphore for TFT interfacing line	*/
 static b8 tftIsUnderUsage = false;
+
+static NVIC_Interrupt_t tftDmaInterruptNumber = 0;
+
+/*
+ * Peak to peak value in a single frame.
+ * Is calculated as the difference between the largest and smallest values in
+ * current frame.
+ * "current frame" starts when "tftScrollCounter" equals zero, and ends when it
+ * equals "tftScrollCounterMax".
+ * Unit is: [TFT screen pixels].
+ */
+static u8 peakToPeakValueInCurrentFrame = 0;
+static u8 largestVlaueInCurrentFrame = 0;
+static u8 smallestVlaueInCurrentFrame = 0;
 
 /*	Defines based on configuration file	*/
 #define ADC_1_CHANNEL		(ANALOG_INPUT_1_PIN % 16)
 #define ADC_2_CHANNEL		(ANALOG_INPUT_2_PIN % 16)
 
+/*	constant values based on experimental tests	*/
+const u64 lineDrawingRatemHzMax = 10000000;
+
 /*	ISR callbacks	*/
 void OSC_voidDMATransferCompleteCallback(void);
 void OSC_voidTimToStartDrawingNextLineCallback(void);
+void OSC_voidTimToStartDrawingInfoCallback(void);
 
 /*
  * Inits all (MCAL) hardware resources configured in "Oscilloscope_configh.h"
@@ -168,20 +182,22 @@ void OSC_voidInitMCAL(void)
 			TIM_u8GetUpdateEventInterruptNumber(
 				LCD_INFO_DRAWING_TRIGGER_TIMER_UNIT_NUMBER);
 
+	tftDmaInterruptNumber = DMA_u8GetInterruptVectorIndex(
+		DMA_UnitNumber_1,
+		(LCD_SPI_UNIT_NUMBER == SPI_UnitNumber_1 ?
+			DMA_ChannelNumber_3 : DMA_ChannelNumber_5));
+
 	NVIC_voidEnableInterrupt(timTrigLineDrawingInterrupt);
 	NVIC_voidEnableInterrupt(timTrigInfoDrawingInterrupt);
 
 	NVIC_voidSetInterruptPriority(
-		timTrigLineDrawingInterrupt, 0, 0);
+		tftDmaInterruptNumber, 0, 0);
 
 	NVIC_voidSetInterruptPriority(
-		NVIC_Interrupt_DMA1_Ch3, 0, 0);												////// don't forget to make this configurable.
+		timTrigLineDrawingInterrupt, 1, 0);
 
 	NVIC_voidSetInterruptPriority(
-		timTrigInfoDrawingInterrupt, 1, 0);
-
-
-
+		timTrigInfoDrawingInterrupt, 1, 1);
 }
 
 /*
@@ -237,6 +253,19 @@ void OSC_voidInitHAL(void)
 		LCD_REFRESH_TRIGGER_TIMER_UNIT_NUMBER, lineDrawingRatemHzMax / 100,
 		lineDrawingRatemHzMax, OSC_voidTimToStartDrawingNextLineCallback);
 
+	/*
+	 * enable info drawing (frequency, peak to peak value, etc..)
+	 * (only if info section was turned on by default or by user settings).
+	 */
+	if (tftScrollCounterMax == 128)	//	if info section is turned on
+	{
+		(void)TIM_u64InitTimTrigger(
+				LCD_INFO_DRAWING_TRIGGER_TIMER_UNIT_NUMBER,
+				LCD_INFO_DRAWING_TRIGGER_FREQUENCY_MILLI_HZ,
+				LCD_INFO_DRAWING_TRIGGER_FREQUENCY_MILLI_HZ,
+				OSC_voidTimToStartDrawingInfoCallback);
+	}
+
 }
 
 /*	main super loop (no OS version)	*/
@@ -245,12 +274,9 @@ void OSC_voidMainSuperLoop(void)
 	/*Delay_voidBlockingDelayMs(5000);
 	TIM_u64SetFreqByChangingArr(
 		LCD_REFRESH_TRIGGER_TIMER_UNIT_NUMBER, 10000);*/
-	volatile u64 freq;
 	while (1)
 	{
 		Delay_voidBlockingDelayMs(500);
-		freq = TIM_u64GetFrequencyMeasured(
-			FREQ_MEASURE_TIMER_UNIT_NUMBER);
 	}
 }
 
@@ -345,17 +371,85 @@ void OSC_voidTimToStartDrawingNextLineCallback(void)
 									// i.e.: OSC_smallest - 1 shifted up by 2
 	TFT2_voidFillDMA(&LCD, &colorBlackU8Val, OSC_smallest + 1);
 
+	/*	update peak to peak calculation parameters	*/
+	if (adcRead > largestVlaueInCurrentFrame)
+		largestVlaueInCurrentFrame = adcRead;
+	if (adcRead < smallestVlaueInCurrentFrame)
+		smallestVlaueInCurrentFrame = adcRead;
+	peakToPeakValueInCurrentFrame =
+		largestVlaueInCurrentFrame - smallestVlaueInCurrentFrame;
+
 	/*	iteration control	*/
 	tftScrollCounter++;
 	if (tftScrollCounter > tftScrollCounterMax)
+	{
 		tftScrollCounter = 0;
+		/*
+		 * for every new current frame, "largestVlaueInCurrentFrame" and
+		 * "smallestVlaueInCurrentFrame" are both equal to the very last reading
+		 * value of the just ended frame.
+		 * (see definition of "current frame" in description of
+		 * "static u8 peakToPeakValueInCurrentFrame" above in this file)
+		 */
+		largestVlaueInCurrentFrame = adcRead;
+		smallestVlaueInCurrentFrame = adcRead;
+
+	}
 	lastRead = adcRead;
 
 	TIM_voidClearStatusFlag(
 		LCD_REFRESH_TRIGGER_TIMER_UNIT_NUMBER, TIM_Status_Update);
 }
 
+/*
+ * This function is periodically called/triggered by a configured timer unit.
+ * It draws signal info on the screen.
+ * This function:
+ *  - Prepares info image.
+ * 	- Pulls TFT semaphore till released.
+ * 	- Takes it.
+ *	- Pauses DMA transfer complete interrupt.
+ *	- Sends info image by DMA.
+ *	- Waits for transfer complete.	  --|    all three are implemented in:
+ *	- Clears DMA transfer complete flag.|==>"TFT2_voidWaitCurrentDataTransfer()"
+ *	- Disables DMA.                   --|
+ *	- Enables/resumes DMA transfer complete interrupt.
+ *	- Releases TFT semaphore.
+ *
+ */
+void OSC_voidTimToStartDrawingInfoCallback(void)
+{
+	/*	Prepare info image	*/
+	u64 freqmHz = TIM_u64GetFrequencyMeasured(FREQ_MEASURE_TIMER_UNIT_NUMBER);
 
+	u16 pixColorArr[30][128];
+
+
+	/*	Pull TFT semaphore till released	*/
+	while(tftIsUnderUsage == true);
+
+	/*	Take it	*/
+	tftIsUnderUsage = true;
+
+	/*	Pause DMA transfer complete interrupt	*/
+	NVIC_voidDisableInterrupt(tftDmaInterruptNumber);
+
+	/*	Send info image by DMA	*/
+	TFT2_voidSendPixels(&LCD, (u16*)pixColorArr, 30 * 128);
+
+	/*
+	 * Wait for transfer complete,
+	 * Then clear DMA transfer complete flag,
+	 * Then disable DMA.
+	 */
+	TFT2_voidWaitCurrentDataTransfer(&LCD);
+
+	/*	Enable/resume DMA transfer complete interrupt	*/
+	NVIC_voidEnableInterrupt(tftDmaInterruptNumber);
+
+	/*	Releases TFT semaphore	*/
+	tftIsUnderUsage = false;
+}
 
 
 
