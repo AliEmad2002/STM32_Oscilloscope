@@ -16,6 +16,7 @@
 int main(void)
 {
 	OSC_voidInitMCAL();
+	//Delay_voidBlockingDelayMs(10000);
 	OSC_voidInitHAL();
 	OSC_voidMainSuperLoop();
 

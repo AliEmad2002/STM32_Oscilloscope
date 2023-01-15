@@ -15,6 +15,9 @@
 #include "Debug_active.h"
 #include "Target_config.h"
 #include "Error_Handler_interface.h"
+#include "Txt_interface.h"
+#include <stdio.h>
+#include <stdlib.h>
 
 /*	MCAL	*/
 #include "DMA_interface.h"
@@ -80,6 +83,8 @@ static u8 peakToPeakValueInCurrentFrame = 0;
 static u8 largestVlaueInCurrentFrame = 0;
 static u8 smallestVlaueInCurrentFrame = 0;
 
+static NVIC_Interrupt_t timTrigLineDrawingInterrupt = 0;
+
 /*	Defines based on configuration file	*/
 #define ADC_1_CHANNEL		(ANALOG_INPUT_1_PIN % 16)
 #define ADC_2_CHANNEL		(ANALOG_INPUT_2_PIN % 16)
@@ -116,9 +121,9 @@ void OSC_voidInitMCAL(void)
 	/**************************************************************************
 	 * SysTick init: (used for time-stamping)
 	 *************************************************************************/
-	STK_voidInit();
+	/*STK_voidInit();
 	STK_voidStartTickMeasure(STK_TickMeasureType_OverflowCount);
-	STK_voidEnableSysTick();
+	STK_voidEnableSysTick();*/
 
 	/**************************************************************************
 	 * GPIO init:
@@ -169,12 +174,12 @@ void OSC_voidInitMCAL(void)
 	 * SCB init:
 	 *************************************************************************/
 	/*	configure number of NVIC groups and sub groups	*/
-	SCB_voidSetPriorityGroupsAndSubGroupsNumber(SCB_PRIGROUP_group4_sub4);
-
+	//SCB_voidSetPriorityGroupsAndSubGroupsNumber(SCB_PRIGROUP_group16_sub0);
+	//while(1);
 	/**************************************************************************
 	 * NVIC init:
 	 *************************************************************************/
-	NVIC_Interrupt_t timTrigLineDrawingInterrupt =
+	timTrigLineDrawingInterrupt =
 			TIM_u8GetUpdateEventInterruptNumber(
 				LCD_REFRESH_TRIGGER_TIMER_UNIT_NUMBER);
 
@@ -197,7 +202,7 @@ void OSC_voidInitMCAL(void)
 		timTrigLineDrawingInterrupt, 1, 0);
 
 	NVIC_voidSetInterruptPriority(
-		timTrigInfoDrawingInterrupt, 1, 1);
+		timTrigInfoDrawingInterrupt, 1, 0);
 }
 
 /*
@@ -250,7 +255,7 @@ void OSC_voidInitHAL(void)
 
 	/*	start drawing	*/
 	lineDrawingRatemHzMin = TIM_u64InitTimTrigger(
-		LCD_REFRESH_TRIGGER_TIMER_UNIT_NUMBER, lineDrawingRatemHzMax / 100,
+		LCD_REFRESH_TRIGGER_TIMER_UNIT_NUMBER, lineDrawingRatemHzMax,
 		lineDrawingRatemHzMax, OSC_voidTimToStartDrawingNextLineCallback);
 
 	/*
@@ -261,8 +266,8 @@ void OSC_voidInitHAL(void)
 	{
 		(void)TIM_u64InitTimTrigger(
 				LCD_INFO_DRAWING_TRIGGER_TIMER_UNIT_NUMBER,
-				LCD_INFO_DRAWING_TRIGGER_FREQUENCY_MILLI_HZ,
-				LCD_INFO_DRAWING_TRIGGER_FREQUENCY_MILLI_HZ,
+				160,
+				1500000, // a value that ensures a possible rate of 2Hz
 				OSC_voidTimToStartDrawingInfoCallback);
 	}
 
@@ -285,8 +290,10 @@ void OSC_voidMainSuperLoop(void)
  * the next "OSC_LineDrawingState_t" operation, and clears DMA completion flags.
  *
  */
+static volatile u8 inDMA = 0;
 void OSC_voidDMATransferCompleteCallback(void)
 {
+	inDMA = 1;
 	/*
 	 * the word 'state' in the following comments is defined in description of
 	 * "OSC_LineDrawingState_t" enum definition)
@@ -316,6 +323,7 @@ void OSC_voidDMATransferCompleteCallback(void)
 		tftIsUnderUsage = false;
 	break;
 	}
+	inDMA = 0;
 }
 
 /*
@@ -329,8 +337,10 @@ void OSC_voidDMATransferCompleteCallback(void)
  * minimum call rate when F_SYS = 72MHz and using default TFT settings is about
  * 90~100 us.
  */
+static volatile u8 inTimTrigLine = 0;
 void OSC_voidTimToStartDrawingNextLineCallback(void)
 {
+	inTimTrigLine = 1;
 	static u8 lastRead = 0;
 
 	/*
@@ -399,6 +409,8 @@ void OSC_voidTimToStartDrawingNextLineCallback(void)
 
 	TIM_voidClearStatusFlag(
 		LCD_REFRESH_TRIGGER_TIMER_UNIT_NUMBER, TIM_Status_Update);
+
+	inTimTrigLine = 0;
 }
 
 /*
@@ -409,6 +421,7 @@ void OSC_voidTimToStartDrawingNextLineCallback(void)
  * 	- Pulls TFT semaphore till released.
  * 	- Takes it.
  *	- Pauses DMA transfer complete interrupt.
+ *	- Sets info image boundaries on TFT.
  *	- Sends info image by DMA.
  *	- Waits for transfer complete.	  --|    all three are implemented in:
  *	- Clears DMA transfer complete flag.|==>"TFT2_voidWaitCurrentDataTransfer()"
@@ -417,22 +430,52 @@ void OSC_voidTimToStartDrawingNextLineCallback(void)
  *	- Releases TFT semaphore.
  *
  */
+static volatile u8 inTrigInfo = 0;
 void OSC_voidTimToStartDrawingInfoCallback(void)
 {
+	inTrigInfo = 1;
 	/*	Prepare info image	*/
 	u64 freqmHz = TIM_u64GetFrequencyMeasured(FREQ_MEASURE_TIMER_UNIT_NUMBER);
 
+	u8 str[20];
+	if (freqmHz < 1000)
+		sprintf((char*)str, "F = %u mHz", (u32)freqmHz);
+	else if (freqmHz < 1000000)
+		sprintf((char*)str, "F = %u Hz", (u32)(freqmHz / 1000));
+	else if (freqmHz < 1000000000)
+		sprintf((char*)str, "F = %u KHz", (u32)(freqmHz / 1000000));
+	else if (freqmHz < 1000000000000)
+		sprintf((char*)str, "F = %u MHz", (u32)(freqmHz / 1000000000));
+
 	u16 pixColorArr[30][128];
 
+	Txt_voidCpyStrToStaticPixArr(
+		str, colorRed.code565, colorBlack.code565, 1,
+		Txt_HorizontalMirroring_Disabled, Txt_VerticalMirroring_Disabled,
+		0, 0, 128, pixColorArr);
 
 	/*	Pull TFT semaphore till released	*/
-	while(tftIsUnderUsage == true);
-
+	while(tftIsUnderUsage == true)
+	{
+		TIM_voidClearStatusFlag(
+			LCD_INFO_DRAWING_TRIGGER_TIMER_UNIT_NUMBER, TIM_Status_Update);
+		return;
+		static volatile u8 foo = 0;
+		if (foo == 1)
+			return;
+	}
 	/*	Take it	*/
 	tftIsUnderUsage = true;
 
+	/*	Pause tim-trig line drawing interrupt	*/
+	NVIC_voidDisableInterrupt(timTrigLineDrawingInterrupt);
+
 	/*	Pause DMA transfer complete interrupt	*/
 	NVIC_voidDisableInterrupt(tftDmaInterruptNumber);
+
+	/*	Set info image boundaries on TFT	*/
+	TFT2_SET_X_BOUNDARIES(&LCD, 0, 127);
+	TFT2_SET_Y_BOUNDARIES(&LCD, 131, 160);
 
 	/*	Send info image by DMA	*/
 	TFT2_voidSendPixels(&LCD, (u16*)pixColorArr, 30 * 128);
@@ -447,8 +490,16 @@ void OSC_voidTimToStartDrawingInfoCallback(void)
 	/*	Enable/resume DMA transfer complete interrupt	*/
 	NVIC_voidEnableInterrupt(tftDmaInterruptNumber);
 
+	/*	Resume tim-trig line drawing interrupt	*/
+	NVIC_voidEnableInterrupt(timTrigLineDrawingInterrupt);
+
 	/*	Releases TFT semaphore	*/
 	tftIsUnderUsage = false;
+
+	TIM_voidClearStatusFlag(
+		LCD_INFO_DRAWING_TRIGGER_TIMER_UNIT_NUMBER, TIM_Status_Update);
+
+	inTrigInfo = 0;
 }
 
 
