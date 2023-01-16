@@ -85,6 +85,9 @@ static u8 smallestVlaueInCurrentFrame = 0;
 
 static NVIC_Interrupt_t timTrigLineDrawingInterrupt = 0;
 
+static u16 infoPixArr[30][128] = {0};
+static b8 isInfoPixArrPrepared = false;
+
 /*	Defines based on configuration file	*/
 #define ADC_1_CHANNEL		(ANALOG_INPUT_1_PIN % 16)
 #define ADC_2_CHANNEL		(ANALOG_INPUT_2_PIN % 16)
@@ -96,6 +99,9 @@ const u64 lineDrawingRatemHzMax = 10000000;
 void OSC_voidDMATransferCompleteCallback(void);
 void OSC_voidTimToStartDrawingNextLineCallback(void);
 void OSC_voidTimToStartDrawingInfoCallback(void);
+
+/*	thread functions	*/
+void OSC_voidPrepareInfoPixArray(void);
 
 /*
  * Inits all (MCAL) hardware resources configured in "Oscilloscope_configh.h"
@@ -121,9 +127,9 @@ void OSC_voidInitMCAL(void)
 	/**************************************************************************
 	 * SysTick init: (used for time-stamping)
 	 *************************************************************************/
-	/*STK_voidInit();
+	STK_voidInit();
 	STK_voidStartTickMeasure(STK_TickMeasureType_OverflowCount);
-	STK_voidEnableSysTick();*/
+	STK_voidEnableSysTick();
 
 	/**************************************************************************
 	 * GPIO init:
@@ -255,7 +261,7 @@ void OSC_voidInitHAL(void)
 
 	/*	start drawing	*/
 	lineDrawingRatemHzMin = TIM_u64InitTimTrigger(
-		LCD_REFRESH_TRIGGER_TIMER_UNIT_NUMBER, lineDrawingRatemHzMax,
+		LCD_REFRESH_TRIGGER_TIMER_UNIT_NUMBER, lineDrawingRatemHzMax / 100,
 		lineDrawingRatemHzMax, OSC_voidTimToStartDrawingNextLineCallback);
 
 	/*
@@ -266,7 +272,7 @@ void OSC_voidInitHAL(void)
 	{
 		(void)TIM_u64InitTimTrigger(
 				LCD_INFO_DRAWING_TRIGGER_TIMER_UNIT_NUMBER,
-				160,
+				1600,
 				1500000, // a value that ensures a possible rate of 2Hz
 				OSC_voidTimToStartDrawingInfoCallback);
 	}
@@ -281,7 +287,8 @@ void OSC_voidMainSuperLoop(void)
 		LCD_REFRESH_TRIGGER_TIMER_UNIT_NUMBER, 10000);*/
 	while (1)
 	{
-		Delay_voidBlockingDelayMs(500);
+		if (isInfoPixArrPrepared == false)
+			OSC_voidPrepareInfoPixArray();
 	}
 }
 
@@ -413,6 +420,32 @@ void OSC_voidTimToStartDrawingNextLineCallback(void)
 	inTimTrigLine = 0;
 }
 
+void OSC_voidPrepareInfoPixArray(void)
+{
+	u64 freqmHz = TIM_u64GetFrequencyMeasured(FREQ_MEASURE_TIMER_UNIT_NUMBER);
+	//static u64 freqmHz = 0;
+	//freqmHz++;
+	u8 str[20];
+	if (freqmHz < 1000)
+		sprintf((char*)str, "F = %u mHz", (u32)freqmHz);
+	else if (freqmHz < 1000000)
+		sprintf((char*)str, "F = %u Hz", (u32)(freqmHz / 1000));
+	else if (freqmHz < 1000000000)
+		sprintf((char*)str, "F = %u KHz", (u32)(freqmHz / 1000000));
+	else if (freqmHz < 1000000000000)
+		sprintf((char*)str, "F = %u MHz", (u32)(freqmHz / 1000000000));
+	else
+		sprintf((char*)str, "F = 0 Hz");
+
+	Txt_voidCpyStrToStaticPixArr(
+			str, colorRed.code565, colorBlack.code565, 1,
+			Txt_HorizontalMirroring_Disabled, Txt_VerticalMirroring_Disabled,
+			0, 0, 30, 128, infoPixArr);
+
+	/*	raise prepared flag	*/
+	isInfoPixArrPrepared = true;
+}
+
 /*
  * This function is periodically called/triggered by a configured timer unit.
  * It draws signal info on the screen.
@@ -430,55 +463,31 @@ void OSC_voidTimToStartDrawingNextLineCallback(void)
  *	- Releases TFT semaphore.
  *
  */
-static volatile u8 inTrigInfo = 0;
 void OSC_voidTimToStartDrawingInfoCallback(void)
 {
-	inTrigInfo = 1;
-	/*	Prepare info image	*/
-	u64 freqmHz = TIM_u64GetFrequencyMeasured(FREQ_MEASURE_TIMER_UNIT_NUMBER);
-
-	u8 str[20];
-	if (freqmHz < 1000)
-		sprintf((char*)str, "F = %u mHz", (u32)freqmHz);
-	else if (freqmHz < 1000000)
-		sprintf((char*)str, "F = %u Hz", (u32)(freqmHz / 1000));
-	else if (freqmHz < 1000000000)
-		sprintf((char*)str, "F = %u KHz", (u32)(freqmHz / 1000000));
-	else if (freqmHz < 1000000000000)
-		sprintf((char*)str, "F = %u MHz", (u32)(freqmHz / 1000000000));
-
-	u16 pixColorArr[30][128];
-
-	Txt_voidCpyStrToStaticPixArr(
-		str, colorRed.code565, colorBlack.code565, 1,
-		Txt_HorizontalMirroring_Disabled, Txt_VerticalMirroring_Disabled,
-		0, 0, 128, pixColorArr);
-
-	/*	Pull TFT semaphore till released	*/
-	while(tftIsUnderUsage == true)
+	/*
+	 * if TFT is under usage or infoPixArr is not yet ready, return. As showing
+	 * info is not so critical, and I don't want it to affect the signal drawing
+	 */
+	if (tftIsUnderUsage == true || isInfoPixArrPrepared == false)
 	{
 		TIM_voidClearStatusFlag(
 			LCD_INFO_DRAWING_TRIGGER_TIMER_UNIT_NUMBER, TIM_Status_Update);
 		return;
-		static volatile u8 foo = 0;
-		if (foo == 1)
-			return;
 	}
-	/*	Take it	*/
-	tftIsUnderUsage = true;
 
-	/*	Pause tim-trig line drawing interrupt	*/
-	NVIC_voidDisableInterrupt(timTrigLineDrawingInterrupt);
+	/*	Take TFT semaphore	*/
+	tftIsUnderUsage = true;
 
 	/*	Pause DMA transfer complete interrupt	*/
 	NVIC_voidDisableInterrupt(tftDmaInterruptNumber);
 
 	/*	Set info image boundaries on TFT	*/
 	TFT2_SET_X_BOUNDARIES(&LCD, 0, 127);
-	TFT2_SET_Y_BOUNDARIES(&LCD, 131, 160);
+	TFT2_SET_Y_BOUNDARIES(&LCD, 130, 159);
 
 	/*	Send info image by DMA	*/
-	TFT2_voidSendPixels(&LCD, (u16*)pixColorArr, 30 * 128);
+	TFT2_voidSendPixels(&LCD, (u16*)infoPixArr, 128 * 30);
 
 	/*
 	 * Wait for transfer complete,
@@ -490,16 +499,14 @@ void OSC_voidTimToStartDrawingInfoCallback(void)
 	/*	Enable/resume DMA transfer complete interrupt	*/
 	NVIC_voidEnableInterrupt(tftDmaInterruptNumber);
 
-	/*	Resume tim-trig line drawing interrupt	*/
-	NVIC_voidEnableInterrupt(timTrigLineDrawingInterrupt);
-
 	/*	Releases TFT semaphore	*/
 	tftIsUnderUsage = false;
 
+	/*	clear infoPixArr ready flag	*/
+	isInfoPixArrPrepared = false;
+
 	TIM_voidClearStatusFlag(
 		LCD_INFO_DRAWING_TRIGGER_TIMER_UNIT_NUMBER, TIM_Status_Update);
-
-	inTrigInfo = 0;
 }
 
 
