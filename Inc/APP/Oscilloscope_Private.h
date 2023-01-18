@@ -66,4 +66,37 @@ static b8 isInfoPixArrPrepared = false;
 const u64 lineDrawingRatemHzMax = 10000000;
 
 
+/*******************************************************************************
+ * run time changeable settings:
+ ******************************************************************************/
+static u64 lineDrawingRatemHzMin;
+
+static u8 tftScrollCounterMax = 128;
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
 #endif /* INCLUDE_APP_OSCILLOSCOPE_PRIVATE_H_ */

@@ -20,15 +20,15 @@
 #include <stdlib.h>
 
 /*	MCAL	*/
-#include "DMA_interface.h"
+#include "RCC_interface.h"
 #include "SCB_interface.h"
 #include "NVIC_interface.h"
-#include "RCC_interface.h"
+#include "STK_interface.h"
+#include "DMA_interface.h"
 #include "SPI_interface.h"
 #include "TIM_interface.h"
 #include "GPIO_interface.h"
-#include "STK_interface.h"
-#include "ADC_private.h"
+#include "EXTI_interface.h"
 #include "ADC_interface.h"
 
 /*	HAL	*/
@@ -37,177 +37,10 @@
 /*	SELF	*/
 #include "Oscilloscope_config.h"
 #include "Oscilloscope_Private.h"
+#include "Oscilloscope_init_MCAL.h"
+#include "Oscilloscope_init_HAL.h"
 #include "Oscilloscope_interface.h"
 
-/*******************************************************************************
- * Init functions:
- ******************************************************************************/
-void OSC_voidInitMCAL(void)
-{
-	/**************************************************************************
-	 * RCC init:
-	 *************************************************************************/
-	RCC_voidSysClockInit();
-
-	/*	GPIO/AFIO	*/
-	RCC_voidEnablePeripheralClk(RCC_Bus_APB2, RCC_PERIPHERAL_IOPA);
-	RCC_voidEnablePeripheralClk(RCC_Bus_APB2, RCC_PERIPHERAL_IOPB);
-	RCC_voidEnablePeripheralClk(RCC_Bus_APB2, RCC_PERIPHERAL_AFIO);
-
-	/*	ADC	*/
-	RCC_voidEnablePeripheralClk(RCC_Bus_APB2, RCC_PERIPHERAL_ADC1);
-	RCC_voidEnablePeripheralClk(RCC_Bus_APB2, RCC_PERIPHERAL_ADC2);
-	RCC_voidSetAdcPrescaler(RCC_ADC_Prescaler_PCLK2_by6);
-
-	/**************************************************************************
-	 * SysTick init: (used for time-stamping)
-	 *************************************************************************/
-	STK_voidInit();
-	STK_voidStartTickMeasure(STK_TickMeasureType_OverflowCount);
-	STK_voidEnableSysTick();
-
-	/**************************************************************************
-	 * GPIO init:
-	 *************************************************************************/
-	GPIO_voidSetPinGpoPushPull(LED_INDICATOR_PIN / 16, LED_INDICATOR_PIN % 16);
-	GPIO_voidSetPinMode(
-		ANALOG_INPUT_1_PIN / 16, ANALOG_INPUT_1_PIN % 16,
-		GPIO_Mode_Input_Analog);
-	GPIO_voidSetPinMode(
-		ANALOG_INPUT_2_PIN / 16, ANALOG_INPUT_2_PIN % 16,
-		GPIO_Mode_Input_Analog);
-	GPIO_voidSetPinInputPullDown(BUTTON_1_PIN / 16, BUTTON_1_PIN % 16);
-
-	/**************************************************************************
-	 * ADC init:
-	 *************************************************************************/
-	// enable continuous mode:
-	ADC_voidEnableContinuousConversionMode(ADC_UnitNumber_1);
-	// set channel sample time:
-	ADC_voidSetSampleTime(
-		ADC_UnitNumber_1, ADC_1_CHANNEL, ADC_SAMPLE_TIME);
-	// write channel in regular sequence:
-	ADC_voidSetSequenceRegular(
-		ADC_UnitNumber_1, ADC_RegularSequenceNumber_1, ADC_1_CHANNEL);
-	// set regular sequence len to 1, as only one channel is to be converted:
-	ADC_voidSetSequenceLenRegular(ADC_UnitNumber_1, 1);
-	// set regular channels trigger to SWSTART:
-	ADC_voidSetExternalEventRegular(
-		ADC_UnitNumber_1, ADC_ExternalEventRegular_SWSTART);
-	// enable conversion on external event:
-	ADC_voidEnableExternalTriggerRegular(ADC_UnitNumber_1);
-	// power on:
-	ADC_voidEnablePower(ADC_UnitNumber_1);
-	// calibrate:
-	ADC_voidStartCalibration(ADC_UnitNumber_1);
-	ADC_voidWaitCalibration(ADC_UnitNumber_1);
-	// trigger start of conversion:
-	ADC_voidStartSWConversionRegular(ADC_UnitNumber_1);
-
-	/**************************************************************************
-	 * TIM init:
-	 *************************************************************************/
-	/*	start frequency measurement	*/
-	TIM_voidInitFreqAndDutyMeasurement(
-		FREQ_MEASURE_TIMER_UNIT_NUMBER, FREQ_MEASURE_TIMER_UNIT_AFIO_MAP, 100);
-
-	/**************************************************************************
-	 * SCB init:
-	 *************************************************************************/
-	/*	configure number of NVIC groups and sub groups	*/
-	//SCB_voidSetPriorityGroupsAndSubGroupsNumber(SCB_PRIGROUP_group16_sub0);
-	//while(1);
-	/**************************************************************************
-	 * NVIC init:
-	 *************************************************************************/
-	timTrigLineDrawingInterrupt =
-			TIM_u8GetUpdateEventInterruptNumber(
-				LCD_REFRESH_TRIGGER_TIMER_UNIT_NUMBER);
-
-	NVIC_Interrupt_t timTrigInfoDrawingInterrupt =
-			TIM_u8GetUpdateEventInterruptNumber(
-				LCD_INFO_DRAWING_TRIGGER_TIMER_UNIT_NUMBER);
-
-	tftDmaInterruptNumber = DMA_u8GetInterruptVectorIndex(
-		DMA_UnitNumber_1,
-		(LCD_SPI_UNIT_NUMBER == SPI_UnitNumber_1 ?
-			DMA_ChannelNumber_3 : DMA_ChannelNumber_5));
-
-	NVIC_voidEnableInterrupt(timTrigLineDrawingInterrupt);
-	NVIC_voidEnableInterrupt(timTrigInfoDrawingInterrupt);
-
-	NVIC_voidSetInterruptPriority(
-		tftDmaInterruptNumber, 0, 0);
-
-	NVIC_voidSetInterruptPriority(
-		timTrigLineDrawingInterrupt, 1, 0);
-
-	NVIC_voidSetInterruptPriority(
-		timTrigInfoDrawingInterrupt, 1, 0);
-}
-
-void OSC_voidInitHAL(void)
-{
-	/**************************************************************************
-	 * LCD init:
-	 *************************************************************************/
-	TFT2_voidInit(
-		&LCD, LCD_SPI_UNIT_NUMBER, LCD_SPI_AFIO_MAP, LCD_RST_PIN, LCD_A0_PIN,
-		LCD_BRIGHTNESS_CONTROL_TIMER_UNIT_NUMBER,
-		LCD_BRIGHTNESS_CONTROL_TIMER_CHANNEL,
-		LCD_BRIGHTNESS_CONTROL_TIMER_AFIO_MAP);
-
-	/*	set maximum brightness by default	*/
-	TFT2_voidSetBrightness(&LCD, POW_TWO(13));
-
-	/*	display startup screen	*/
-	TFT2_SET_X_BOUNDARIES(&LCD, 0, 127);
-	TFT2_SET_Y_BOUNDARIES(&LCD, 0, 159);
-
-	TFT2_WRITE_CMD(&LCD, TFT_CMD_MEM_WRITE);
-
-	TFT2_ENTER_DATA_MODE(&LCD);
-
-	TFT2_voidFillDMA(&LCD, &colorBlackU8Val, 128 * 160);
-	TFT2_voidWaitCurrentDataTransfer(&LCD);
-	TFT2_voidClearDMATCFlag(&LCD);
-	TFT2_voidDisableDMAChannel(&LCD);
-
-	/*	enable interrupt (to be used for less drawing overhead)	*/
-	TFT2_voidSetDMATransferCompleteCallback(
-		&LCD, OSC_voidDMATransferCompleteCallback);
-
-	TFT2_voidEnableDMATransferCompleteInterrupt(&LCD);
-
-	/*	give user chance to see startup screen	*/
-	//Delay_voidBlockingDelayMs(1500);
-
-	/*
-	 * split display to two parts, large one for displaying signal (0-130),
-	 * and small one for signal data (131-160). (based on saved user settings).
-	 *
-	 * The split can be cancelled from settings.
-	 */
-	TFT2_voidInitScroll(&LCD, 0, 130, 32);
-
-	/*	start drawing	*/
-	lineDrawingRatemHzMin = TIM_u64InitTimTrigger(
-		LCD_REFRESH_TRIGGER_TIMER_UNIT_NUMBER, lineDrawingRatemHzMax / 100,
-		lineDrawingRatemHzMax, OSC_voidTimToStartDrawingNextLineCallback);
-
-	/*
-	 * enable info drawing (frequency, peak to peak value, etc..)
-	 * (only if info section was turned on by default or by user settings).
-	 */
-	if (tftScrollCounterMax == 128)	//	if info section is turned on
-	{
-		(void)TIM_u64InitTimTrigger(
-				LCD_INFO_DRAWING_TRIGGER_TIMER_UNIT_NUMBER,
-				1600,
-				1500000, // a value that ensures a possible rate of 2Hz
-				OSC_voidTimToStartDrawingInfoCallback);
-	}
-}
 
 /*******************************************************************************
  * Mode switching:
@@ -288,6 +121,11 @@ void OSC_voidPrepareInfoPixArray(void)
 
 	/*	raise prepared flag	*/
 	isInfoPixArrPrepared = true;
+}
+
+void OSC_voidAutoCalibVoltAndTimePerDiv(void)
+{
+	/*	loop on all 6 levels of
 }
 
 /*******************************************************************************

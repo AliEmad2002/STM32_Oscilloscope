@@ -16,13 +16,15 @@
  * Inits all (MCAL) hardware resources configured in "Oscilloscope_configh.h"
  * file.
  */
-void OSC_voidInitMCAL(void);
+extern void OSC_voidInitMCAL(void);
 
 /*
  * Inits all (HAL) hardware resources configured in "Oscilloscope_configh.h"
  * file, and static objects defined in "Oscilloscope_program.c".
  */
-void OSC_voidInitHAL(void);
+extern void OSC_voidInitHAL(void);
+
+extern void OSC_voidInitApp(void);
 
 /*******************************************************************************
  * Mode switching:
