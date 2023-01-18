@@ -32,81 +32,16 @@
 #include "ADC_interface.h"
 
 /*	HAL	*/
-#include "TFT_interface_V1.h"
 #include "TFT_interface_V2.h"
 
 /*	SELF	*/
 #include "Oscilloscope_config.h"
+#include "Oscilloscope_Private.h"
 #include "Oscilloscope_interface.h"
 
-/*	enum that describes the different states of line drawing	*/
-typedef enum{
-	OSC_LineDrawingState_1,	// means that the last started operation is:
-							// scroll, read ADC, set new drawing boundaries
-							// and draw black segment from 0 to
-							// 'OSC_smallest' - 1.
-
-	OSC_LineDrawingState_2,	// means that the last started operation is:
-							// Drawing red segment from 'OSC_smallest' to
-							// 'OSC_largeest'.
-
-	OSC_LineDrawingState_3,	// means that the last started operation is:
-							// Drawing red segment from 'OSC_largeest' + 1 to
-							// 127.
-}OSC_LineDrawingState_t;
-
-/*	static objects	*/
-static TFT2_t LCD;
-
-static u8 OSC_smallest = 0;		// these two variables represent smallest and
-static u8 OSC_largest = 0;		// largest points in the current line's active
-								// (red) segment.
-
-static OSC_LineDrawingState_t drawingState = OSC_LineDrawingState_3;
-
-static u8 tftScrollCounter = 0;
-
-/*	binary semaphore for TFT interfacing line	*/
-static b8 tftIsUnderUsage = false;
-
-static NVIC_Interrupt_t tftDmaInterruptNumber = 0;
-
-/*
- * Peak to peak value in a single frame.
- * Is calculated as the difference between the largest and smallest values in
- * current frame.
- * "current frame" starts when "tftScrollCounter" equals zero, and ends when it
- * equals "tftScrollCounterMax".
- * Unit is: [TFT screen pixels].
- */
-static u8 peakToPeakValueInCurrentFrame = 0;
-static u8 largestVlaueInCurrentFrame = 0;
-static u8 smallestVlaueInCurrentFrame = 0;
-
-static NVIC_Interrupt_t timTrigLineDrawingInterrupt = 0;
-
-static u16 infoPixArr[30][128] = {0};
-static b8 isInfoPixArrPrepared = false;
-
-/*	Defines based on configuration file	*/
-#define ADC_1_CHANNEL		(ANALOG_INPUT_1_PIN % 16)
-#define ADC_2_CHANNEL		(ANALOG_INPUT_2_PIN % 16)
-
-/*	constant values based on experimental tests	*/
-const u64 lineDrawingRatemHzMax = 10000000;
-
-/*	ISR callbacks	*/
-void OSC_voidDMATransferCompleteCallback(void);
-void OSC_voidTimToStartDrawingNextLineCallback(void);
-void OSC_voidTimToStartDrawingInfoCallback(void);
-
-/*	thread functions	*/
-void OSC_voidPrepareInfoPixArray(void);
-
-/*
- * Inits all (MCAL) hardware resources configured in "Oscilloscope_configh.h"
- * file.
- */
+/*******************************************************************************
+ * Init functions:
+ ******************************************************************************/
 void OSC_voidInitMCAL(void)
 {
 	/**************************************************************************
@@ -211,10 +146,6 @@ void OSC_voidInitMCAL(void)
 		timTrigInfoDrawingInterrupt, 1, 0);
 }
 
-/*
- * Inits all (HAL) hardware resources configured in "Oscilloscope_configh.h"
- * file, and static objects defined in "Oscilloscope_program.c".
- */
 void OSC_voidInitHAL(void)
 {
 	/**************************************************************************
@@ -276,10 +207,52 @@ void OSC_voidInitHAL(void)
 				1500000, // a value that ensures a possible rate of 2Hz
 				OSC_voidTimToStartDrawingInfoCallback);
 	}
-
 }
 
-/*	main super loop (no OS version)	*/
+/*******************************************************************************
+ * Mode switching:
+ ******************************************************************************/
+void OSC_voidEnterMenuMode(void);
+
+void OSC_voidEnterMathMode(void)
+{
+	// TODO: as memory is never enough, let the menu take 1/3 of the screen only
+}
+
+void OSC_voidTrigPauseResume(void)
+{
+	/*	static flag	*/
+	static b8 paused = false;
+
+	if (paused)
+	{
+		// resume:
+		/*	stop line drawing trigger counter	*/
+		TIM_voidDisableCounter(LCD_REFRESH_TRIGGER_TIMER_UNIT_NUMBER);
+
+		/*	stop info drawing trigger counter	*/
+		TIM_voidDisableCounter(LCD_INFO_DRAWING_TRIGGER_TIMER_UNIT_NUMBER);
+
+		/*	update flag	*/
+		paused = false;
+	}
+
+	else
+	{
+		/*	start line drawing trigger counter	*/
+		TIM_voidEnableCounter(LCD_REFRESH_TRIGGER_TIMER_UNIT_NUMBER);
+
+		/*	start info drawing trigger counter	*/
+		TIM_voidEnableCounter(LCD_INFO_DRAWING_TRIGGER_TIMER_UNIT_NUMBER);
+
+		/*	update flag	*/
+		paused = true;
+	}
+}
+
+/*******************************************************************************
+ * Main thrad functions:
+ ******************************************************************************/
 void OSC_voidMainSuperLoop(void)
 {
 	/*Delay_voidBlockingDelayMs(5000);
@@ -292,15 +265,36 @@ void OSC_voidMainSuperLoop(void)
 	}
 }
 
-/*
- * this function is called whenever DMA finishes a transfer to TFT, it starts
- * the next "OSC_LineDrawingState_t" operation, and clears DMA completion flags.
- *
- */
-static volatile u8 inDMA = 0;
+void OSC_voidPrepareInfoPixArray(void)
+{
+	u64 freqmHz = TIM_u64GetFrequencyMeasured(FREQ_MEASURE_TIMER_UNIT_NUMBER);
+
+	u8 str[20];
+	if (freqmHz < 1000)
+		sprintf((char*)str, "F = %u mHz", (u32)freqmHz);
+	else if (freqmHz < 1000000)
+		sprintf((char*)str, "F = %u Hz", (u32)(freqmHz / 1000));
+	else if (freqmHz < 1000000000)
+		sprintf((char*)str, "F = %u KHz", (u32)(freqmHz / 1000000));
+	else if (freqmHz < 1000000000000)
+		sprintf((char*)str, "F = %u MHz", (u32)(freqmHz / 1000000000));
+	else
+		sprintf((char*)str, "F = 0 Hz");
+
+	Txt_voidCpyStrToStaticPixArr(
+			str, colorRed.code565, colorBlack.code565, 1,
+			Txt_HorizontalMirroring_Disabled, Txt_VerticalMirroring_Disabled,
+			0, 0, 30, 128, infoPixArr);
+
+	/*	raise prepared flag	*/
+	isInfoPixArrPrepared = true;
+}
+
+/*******************************************************************************
+ * ISR callbacks:
+ ******************************************************************************/
 void OSC_voidDMATransferCompleteCallback(void)
 {
-	inDMA = 1;
 	/*
 	 * the word 'state' in the following comments is defined in description of
 	 * "OSC_LineDrawingState_t" enum definition)
@@ -330,24 +324,10 @@ void OSC_voidDMATransferCompleteCallback(void)
 		tftIsUnderUsage = false;
 	break;
 	}
-	inDMA = 0;
 }
 
-/*
- * this function is called to start executing what's mentioned in
- * "OSC_LineDrawingState_1" description.
- *
- * It is executed periodically as what user had configured time axis.
- *
- * minimum call rate of this function is important, as executing it in a high
- * rate would overlap drawing of multiple lines!
- * minimum call rate when F_SYS = 72MHz and using default TFT settings is about
- * 90~100 us.
- */
-static volatile u8 inTimTrigLine = 0;
 void OSC_voidTimToStartDrawingNextLineCallback(void)
 {
-	inTimTrigLine = 1;
 	static u8 lastRead = 0;
 
 	/*
@@ -416,53 +396,8 @@ void OSC_voidTimToStartDrawingNextLineCallback(void)
 
 	TIM_voidClearStatusFlag(
 		LCD_REFRESH_TRIGGER_TIMER_UNIT_NUMBER, TIM_Status_Update);
-
-	inTimTrigLine = 0;
 }
 
-void OSC_voidPrepareInfoPixArray(void)
-{
-	u64 freqmHz = TIM_u64GetFrequencyMeasured(FREQ_MEASURE_TIMER_UNIT_NUMBER);
-	//static u64 freqmHz = 0;
-	//freqmHz++;
-	u8 str[20];
-	if (freqmHz < 1000)
-		sprintf((char*)str, "F = %u mHz", (u32)freqmHz);
-	else if (freqmHz < 1000000)
-		sprintf((char*)str, "F = %u Hz", (u32)(freqmHz / 1000));
-	else if (freqmHz < 1000000000)
-		sprintf((char*)str, "F = %u KHz", (u32)(freqmHz / 1000000));
-	else if (freqmHz < 1000000000000)
-		sprintf((char*)str, "F = %u MHz", (u32)(freqmHz / 1000000000));
-	else
-		sprintf((char*)str, "F = 0 Hz");
-
-	Txt_voidCpyStrToStaticPixArr(
-			str, colorRed.code565, colorBlack.code565, 1,
-			Txt_HorizontalMirroring_Disabled, Txt_VerticalMirroring_Disabled,
-			0, 0, 30, 128, infoPixArr);
-
-	/*	raise prepared flag	*/
-	isInfoPixArrPrepared = true;
-}
-
-/*
- * This function is periodically called/triggered by a configured timer unit.
- * It draws signal info on the screen.
- * This function:
- *  - Prepares info image.
- * 	- Pulls TFT semaphore till released.
- * 	- Takes it.
- *	- Pauses DMA transfer complete interrupt.
- *	- Sets info image boundaries on TFT.
- *	- Sends info image by DMA.
- *	- Waits for transfer complete.	  --|    all three are implemented in:
- *	- Clears DMA transfer complete flag.|==>"TFT2_voidWaitCurrentDataTransfer()"
- *	- Disables DMA.                   --|
- *	- Enables/resumes DMA transfer complete interrupt.
- *	- Releases TFT semaphore.
- *
- */
 void OSC_voidTimToStartDrawingInfoCallback(void)
 {
 	/*
