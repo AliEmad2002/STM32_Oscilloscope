@@ -22,10 +22,21 @@
 #include "EXTI_interface.h"
 #include "ADC_interface.h"
 
+/*
+ * HAL
+ * (for 'Oscilloscope_Private.h' dependency
+ */
+#include "TFT_interface_V2.h"
+
 /*	SELF	*/
 #include "Oscilloscope_config.h"
 #include "Oscilloscope_Private.h"
 #include "Oscilloscope_init_MCAL.h"
+
+/**	extern buttons callback functions	*/
+extern void OSC_voidTrigPauseResume(void);
+extern void OSC_voidEnterMenuMode(void);
+extern void OSC_voidAutoCalibVoltAndTimePerDiv(void);
 
 
 void OSC_InitRCC(void)
@@ -182,16 +193,10 @@ void OSC_InitADC(void)
 void OSC_InitTIM(void)
 {
 	/*	start frequency measurement	*/
-	u64 freqMax = TIM_voidInitFreqAndDutyMeasurement(
+	TIM_voidInitFreqAndDutyMeasurement(
 		FREQ_MEASURE_TIMER_UNIT_NUMBER,
 		FREQ_MEASURE_TIMER_UNIT_AFIO_MAP,
 		FREQ_MEASURE_MIN_FREQ_MILLI_HZ);
-
-	#if DEBUG_ON
-	trace_printf("Due to the system clock selected, and the minimum\n");
-	trace_printf("measurable frequency configured in 'Oscilloscope_config,'\n");
-	trace_printf("the maximum measurable frequency is %d Hz\n", freqMax / 1000);
-	#endif
 }
 
 void OSC_InitSCB(void)

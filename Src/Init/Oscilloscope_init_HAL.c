@@ -10,6 +10,9 @@
 #include "Std_Types.h"
 #include "Bit_Math.h"
 #include "Debug_active.h"
+#include "Img_interface.h"
+#include "Colors.h"
+#include "Delay_interface.h"
 
 /*	MCAL	*/
 #include "RCC_interface.h"
@@ -31,6 +34,10 @@
 #include "Oscilloscope_Private.h"
 #include "Oscilloscope_init_HAL.h"
 
+/**	extern ISR callbacks	*/
+extern void OSC_voidDMATransferCompleteCallback(void);
+extern void OSC_voidTimToStartDrawingNextLineCallback(void);
+extern void OSC_voidTimToStartDrawingInfoCallback(void);
 
 void OSC_voidInitTFT(void)
 {

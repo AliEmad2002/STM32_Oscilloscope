@@ -45,7 +45,10 @@
 /*******************************************************************************
  * Mode switching:
  ******************************************************************************/
-void OSC_voidEnterMenuMode(void);
+void OSC_voidEnterMenuMode(void)
+{
+
+}
 
 void OSC_voidEnterMathMode(void)
 {
@@ -125,7 +128,7 @@ void OSC_voidPrepareInfoPixArray(void)
 
 void OSC_voidAutoCalibVoltAndTimePerDiv(void)
 {
-	/*	loop on all 6 levels of
+
 }
 
 /*******************************************************************************

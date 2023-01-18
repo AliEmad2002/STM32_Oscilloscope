@@ -63,7 +63,7 @@ static b8 isInfoPixArrPrepared = false;
 #define ADC_2_CHANNEL		(ANALOG_INPUT_2_PIN % 16)
 
 /*	constant values based on experimental tests	*/
-const u64 lineDrawingRatemHzMax = 10000000;
+static const u64 lineDrawingRatemHzMax = 10000000;
 
 
 /*******************************************************************************
