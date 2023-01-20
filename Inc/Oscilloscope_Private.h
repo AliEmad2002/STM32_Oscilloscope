@@ -9,6 +9,15 @@
 #ifndef INCLUDE_APP_OSCILLOSCOPE_PRIVATE_H_
 #define INCLUDE_APP_OSCILLOSCOPE_PRIVATE_H_
 
+
+/*	Defines based on configuration file	*/
+#define ADC_1_CHANNEL		(ANALOG_INPUT_1_PIN % 16)
+#define ADC_2_CHANNEL		(ANALOG_INPUT_2_PIN % 16)
+
+/*	constant values based on experimental tests	*/
+static const u64 lineDrawingRatemHzMax = 8000000;
+
+
 /*	enum that describes the different states of line drawing	*/
 typedef enum{
 	OSC_LineDrawingState_1,	// means that the last started operation is:
@@ -25,78 +34,14 @@ typedef enum{
 							// 127.
 }OSC_LineDrawingState_t;
 
-/*	static objects	*/
-static TFT2_t LCD;
 
-static u8 OSC_smallest = 0;		// these two variables represent smallest and
-static u8 OSC_largest = 0;		// largest points in the current line's active
-								// (red) segment.
+typedef enum{
+	OSC_RunningState_NormalMode,
+	OSC_RunningState_MathMode
+}OSC_RunningState_t;
 
-static OSC_LineDrawingState_t drawingState = OSC_LineDrawingState_3;
+void OSC_voidStartSignalDrawing(void);
 
-static u8 tftScrollCounter = 0;
-
-/*	binary semaphore for TFT interfacing line	*/
-static b8 tftIsUnderUsage = false;
-
-static NVIC_Interrupt_t tftDmaInterruptNumber = 0;
-
-/*
- * Peak to peak value in a single frame.
- * Is calculated as the difference between the largest and smallest values in
- * current frame.
- * "current frame" starts when "tftScrollCounter" equals zero, and ends when it
- * equals "tftScrollCounterMax".
- * Unit is: [TFT screen pixels].
- */
-static u8 peakToPeakValueInCurrentFrame = 0;
-static u8 largestVlaueInCurrentFrame = 0;
-static u8 smallestVlaueInCurrentFrame = 0;
-
-static NVIC_Interrupt_t timTrigLineDrawingInterrupt = 0;
-
-static u16 infoPixArr[30][128] = {0};
-static b8 isInfoPixArrPrepared = false;
-
-/*	Defines based on configuration file	*/
-#define ADC_1_CHANNEL		(ANALOG_INPUT_1_PIN % 16)
-#define ADC_2_CHANNEL		(ANALOG_INPUT_2_PIN % 16)
-
-/*	constant values based on experimental tests	*/
-static const u64 lineDrawingRatemHzMax = 10000000;
-
-
-/*******************************************************************************
- * run time changeable settings:
- ******************************************************************************/
-static u64 lineDrawingRatemHzMin;
-
-static u8 tftScrollCounterMax = 128;
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
+void OSC_voidStartInfoDrawing(void);
 
 #endif /* INCLUDE_APP_OSCILLOSCOPE_PRIVATE_H_ */

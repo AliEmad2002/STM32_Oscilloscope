@@ -29,13 +29,17 @@ extern void OSC_voidInitApp(void);
 /*******************************************************************************
  * Mode switching:
  ******************************************************************************/
-/*	enters menu mode	*/
-void OSC_voidEnterMenuMode(void);
-
 /*	Enters math mode (beta)	*/
 void OSC_voidEnterMathMode(void);
 
+/*	Enters normal Y-t mode	*/
+void OSC_voidEnterNormalMode(void);
+
 /*	pause / resume (state is actually triggered each call)	*/
+void OSC_voidPause(void);
+
+void OSC_voidResume(void);
+
 void OSC_voidTrigPauseResume(void);
 
 /*******************************************************************************

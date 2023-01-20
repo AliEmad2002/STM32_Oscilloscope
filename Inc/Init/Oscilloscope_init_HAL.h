@@ -17,10 +17,6 @@ void OSC_voidInitSignalDrawing(void);
 
 void OSC_voidInitInfoDrawing(void);
 
-void OSC_voidStartSignalDrawing(void);
-
-void OSC_voidStartInfoDrawing(void);
-
 void OSC_voidInitHAL(void);
 
 

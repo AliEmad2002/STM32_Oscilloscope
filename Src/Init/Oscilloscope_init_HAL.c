@@ -34,43 +34,38 @@
 #include "Oscilloscope_Private.h"
 #include "Oscilloscope_init_HAL.h"
 
-/**	extern ISR callbacks	*/
 extern void OSC_voidDMATransferCompleteCallback(void);
-extern void OSC_voidTimToStartDrawingNextLineCallback(void);
-extern void OSC_voidTimToStartDrawingInfoCallback(void);
+
+extern TFT2_t OSC_LCD;
 
 void OSC_voidInitTFT(void)
 {
 	TFT2_voidInit(
-		&LCD, LCD_SPI_UNIT_NUMBER, LCD_SPI_AFIO_MAP, LCD_RST_PIN, LCD_A0_PIN,
+		&OSC_LCD, LCD_SPI_UNIT_NUMBER, LCD_SPI_AFIO_MAP, LCD_RST_PIN, LCD_A0_PIN,
 		LCD_BRIGHTNESS_CONTROL_TIMER_UNIT_NUMBER,
 		LCD_BRIGHTNESS_CONTROL_TIMER_CHANNEL,
 		LCD_BRIGHTNESS_CONTROL_TIMER_AFIO_MAP);
 
 	/*	set maximum brightness by default	*/
-	TFT2_voidSetBrightness(&LCD, POW_TWO(16) - 1);
+	TFT2_voidSetBrightness(&OSC_LCD, POW_TWO(16) - 1);
 }
 
 void OSC_voidDisplayStartupScreeen(void)
 {
 	/*	set bounds	*/
-	TFT2_SET_X_BOUNDARIES(&LCD, 0, 127);
-	TFT2_SET_Y_BOUNDARIES(&LCD, 0, 159);
+	TFT2_SET_X_BOUNDARIES(&OSC_LCD, 0, 127);
+	TFT2_SET_Y_BOUNDARIES(&OSC_LCD, 0, 159);
 
 	/*	start data write operation	*/
-	TFT2_WRITE_CMD(&LCD, TFT_CMD_MEM_WRITE);
+	TFT2_WRITE_CMD(&OSC_LCD, TFT_CMD_MEM_WRITE);
 
-	TFT2_ENTER_DATA_MODE(&LCD);
+	TFT2_ENTER_DATA_MODE(&OSC_LCD);
 
 	/*	DMA send	*/
-	TFT2_voidFillDMA(&LCD, &colorBlackU8Val, 128 * 160);
+	TFT2_voidFillDMA(&OSC_LCD, &colorBlackU8Val, 128 * 160);
 
 	/*	wait for DMA to get done and clear flags	*/
-	TFT2_voidWaitCurrentDataTransfer(&LCD);
-
-	TFT2_voidClearDMATCFlag(&LCD);
-
-	TFT2_voidDisableDMAChannel(&LCD);
+	TFT2_voidWaitCurrentDataTransfer(&OSC_LCD);
 
 	/*	give user time to see startup screen	*/
 	Delay_voidBlockingDelayMs(LCD_STARTUP_SCREEN_DELAY_MS);
@@ -80,9 +75,9 @@ void OSC_voidInitSignalDrawing(void)
 {
 	/*	enable interrupt (to be used for less drawing overhead)	*/
 	TFT2_voidSetDMATransferCompleteCallback(
-		&LCD, OSC_voidDMATransferCompleteCallback);
+		&OSC_LCD, OSC_voidDMATransferCompleteCallback);
 
-	TFT2_voidEnableDMATransferCompleteInterrupt(&LCD);
+	TFT2_voidEnableDMATransferCompleteInterrupt(&OSC_LCD);
 }
 
 void OSC_voidInitInfoDrawing(void)
@@ -94,26 +89,7 @@ void OSC_voidInitInfoDrawing(void)
 	 *
 	 * The split can be cancelled from settings.
 	 */
-	TFT2_voidInitScroll(&LCD, 0, 130, 32);
-}
-
-void OSC_voidStartSignalDrawing(void)
-{
-	/*	start drawing	*/
-	lineDrawingRatemHzMin = TIM_u64InitTimTrigger(
-		// TODO: set this '100' to a configurable startup value
-		LCD_REFRESH_TRIGGER_TIMER_UNIT_NUMBER, lineDrawingRatemHzMax / 100,
-		lineDrawingRatemHzMax, OSC_voidTimToStartDrawingNextLineCallback);
-}
-
-void OSC_voidStartInfoDrawing(void)
-{
-	(void)TIM_u64InitTimTrigger(
-		LCD_INFO_DRAWING_TRIGGER_TIMER_UNIT_NUMBER,
-		// TODO: set these numbers to a configurable startup values
-		1600,
-		1500000, // a value that ensures a possible rate of 2Hz
-		OSC_voidTimToStartDrawingInfoCallback);
+	TFT2_voidInitScroll(&OSC_LCD, 0, 130, 32);
 }
 
 void OSC_voidInitHAL(void)
@@ -126,8 +102,7 @@ void OSC_voidInitHAL(void)
 
 	OSC_voidInitInfoDrawing();
 
-	OSC_voidStartSignalDrawing();
-
-	OSC_voidStartInfoDrawing();
+	static volatile u32 foo = 55;
+	foo++;
 }
 

@@ -1,0 +1,15 @@
+/*
+ * Oscilloscope_init_APP.h
+ *
+ *  Created on: Jan 19, 2023
+ *      Author: Ali Emad Ali
+ */
+
+#ifndef INCLUDE_APP_INIT_OSCILLOSCOPE_INIT_APP_H_
+#define INCLUDE_APP_INIT_OSCILLOSCOPE_INIT_APP_H_
+
+
+void OSC_voidInitApp(void);
+
+
+#endif /* INCLUDE_APP_INIT_OSCILLOSCOPE_INIT_APP_H_ */

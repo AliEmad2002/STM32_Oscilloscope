@@ -11,7 +11,7 @@
 /*******************************************************************************
  * LCD
  ******************************************************************************/
-#define LCD_A0_PIN									GPIO_Pin_A0
+#define LCD_A0_PIN									GPIO_Pin_B15
 #define LCD_RST_PIN									GPIO_Pin_A1
 
 #define LCD_SPI_UNIT_NUMBER							SPI_UnitNumber_1
@@ -27,7 +27,15 @@
 #define LCD_INFO_DRAWING_TRIGGER_TIMER_UNIT_NUMBER	3
 #define LCD_INFO_DRAWING_TRIGGER_FREQUENCY_MILLI_HZ	2000	// once every 0.5 second
 
-#define LCD_STARTUP_SCREEN_DELAY_MS					1500
+#define LCD_STARTUP_SCREEN_DELAY_MS					0
+
+#define LCD_BACKGROUND_COLOR_U8						colorBlackU8Val
+
+#define LCD_BACKGROUND_COLOR_U16					(colorBlack.code565)
+
+#define LCD_MAIN_DRAWING_COLOR_U16					(colorWhite.code565)
+
+//#define LCD_MENU_FONT_SIZE							1
 
 /*******************************************************************************
  * Running indication LED
@@ -44,9 +52,9 @@
  * 	- one can't set button1 to pin A1 and button2 to pin B1 or C1.
  * 	- one can set button1 to pin A1 and button2 to any pin except B1 and C1.
  */
-#define BUTTON_AUTO_PIN								GPIO_Pin_A2
-#define BUTTON_PAUSE_RESUME_PIN						GPIO_Pin_A2
-#define BUTTON_MENU_PIN								GPIO_Pin_A2
+#define BUTTON_AUTO_PIN								GPIO_Pin_B13
+#define BUTTON_PAUSE_RESUME_PIN						GPIO_Pin_B12
+#define BUTTON_MENU_PIN								GPIO_Pin_B10
 
 /*******************************************************************************
  * Analog channels and ADC configuration
@@ -69,7 +77,7 @@ typedef struct{
  * Oscilloscope channel 1 configurations:
  ******************************************************************************/
 /*	number of levels for channel 1	*/
-#define CHANNEL_1_NUMBER_OF_LEVELS					6
+#define CHANNEL_1_NUMBER_OF_LEVELS					1 //6
 
 /*
  * array of ADC1 channels connected to these levels.
@@ -79,13 +87,17 @@ typedef struct{
  */
 static const OSC_Config_ADC_Channel
 	oscCh1AdcChannels[CHANNEL_1_NUMBER_OF_LEVELS] = {
-		(OSC_Config_ADC_Channel){ADC_ChannelNumber_0, 5},
-		(OSC_Config_ADC_Channel){ADC_ChannelNumber_1, 20},
-		(OSC_Config_ADC_Channel){ADC_ChannelNumber_2, 1000},
-		(OSC_Config_ADC_Channel){ADC_ChannelNumber_3, 3300},
-		(OSC_Config_ADC_Channel){ADC_ChannelNumber_4, 5000},
-		(OSC_Config_ADC_Channel){ADC_ChannelNumber_5, 10000},
+		//(OSC_Config_ADC_Channel){ADC_ChannelNumber_0, 5},
+		//(OSC_Config_ADC_Channel){ADC_ChannelNumber_1, 20},
+		//(OSC_Config_ADC_Channel){ADC_ChannelNumber_2, 1000},
+		(OSC_Config_ADC_Channel){ADC_ChannelNumber_3, 3300}
+		//(OSC_Config_ADC_Channel){ADC_ChannelNumber_4, 5000},
+		//(OSC_Config_ADC_Channel){ADC_ChannelNumber_5, 10000},
 };
+
+#define ADC_THRESHOLD_MIN							(10)
+
+#define ADC_THRESHOLD_MAX							(4096 - 10)
 
 /*******************************************************************************
  * frequency measurement

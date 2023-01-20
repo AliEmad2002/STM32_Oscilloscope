@@ -35,15 +35,15 @@
 
 /**	extern buttons callback functions	*/
 extern void OSC_voidTrigPauseResume(void);
-extern void OSC_voidEnterMenuMode(void);
+extern void OSC_voidOpenMenu(void);
 extern void OSC_voidAutoCalibVoltAndTimePerDiv(void);
 
+/*	extern needed global variables	*/
+extern NVIC_Interrupt_t tftDmaInterruptNumber;
+extern NVIC_Interrupt_t timTrigLineDrawingInterrupt;
 
 void OSC_InitRCC(void)
 {
-	/*	clock configurations are in 'RCC_config.h'	*/
-	RCC_voidSysClockInit();
-
 	/*	GPIO/AFIO	*/
 	RCC_voidEnablePeripheralClk(RCC_Bus_APB2, RCC_PERIPHERAL_IOPA);
 	RCC_voidEnablePeripheralClk(RCC_Bus_APB2, RCC_PERIPHERAL_IOPB);
@@ -133,7 +133,7 @@ void OSC_InitEXTI(void)
 	EXTI_voidSetTriggeringEdge(BUTTON_MENU_PIN % 16, EXTI_Trigger_risingEdge);
 
 	EXTI_voidSetCallBack(
-			BUTTON_MENU_PIN % 16, OSC_voidEnterMenuMode);
+			BUTTON_MENU_PIN % 16, OSC_voidOpenMenu);
 
 	EXTI_voidEnableLine(BUTTON_MENU_PIN % 16);
 
@@ -154,6 +154,19 @@ void OSC_InitADC(void)
 		ADC_voidSetSampleTime(
 			ADC_UnitNumber_1, ch, ADC_SAMPLE_TIME);
 	}
+
+	/*
+	 * set AWD to all channels mode (any ways only one channel is being
+	 * converted at a time
+	 */
+	ADC_voidSetAWDMode(ADC_UnitNumber_1, ADC_WatchdogMode_AllChannels);
+
+	/*	set analog watchdog threshold values	*/
+	ADC_voidSetAWDHighThreshold(ADC_UnitNumber_1, ADC_THRESHOLD_MAX);
+	ADC_voidSetAWDLowThreshold(ADC_UnitNumber_1, ADC_THRESHOLD_MIN);
+
+	/*	enable AWD	*/
+	ADC_voidEnableAWDRegularCh(ADC_UnitNumber_1);
 
 	/**
 	 * Because only one ADC channel is to be used during signal plotting (this
