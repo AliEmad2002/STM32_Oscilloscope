@@ -77,7 +77,6 @@ void OSC_voidStartSignalDrawing(void)
 {
 	/*	start drawing	*/
 	(void)TIM_u64InitTimTrigger(
-		// TODO: set this '100' to a configurable startup value
 		LCD_REFRESH_TRIGGER_TIMER_UNIT_NUMBER, 100000ul,
 		100000ul * 2, OSC_voidTimRefreshQuarterCallback);
 }
