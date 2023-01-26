@@ -33,59 +33,36 @@
 #include "Oscilloscope_Private.h"
 #include "Oscilloscope_init_APP.h"
 
-extern u64 currentMicroSecondsPerPix;
-extern u64 currentMicroVoltsPerPix;
-extern b8 tftIsUnderUsage;
-extern u8 tftScrollCounter;
-extern u8 tftScrollCounterMax;
-extern ADC_ChannelNumber_t currentUsedAdcChannel;
-extern b8 paused;
-extern b8 enter;
-extern u8 peakToPeakValueInCurrentFrame;
-extern OSC_LineDrawingState_t drawingState;
-extern b8 isInfoPixArrPrepared;
-extern u8 largestVlaueInCurrentFrame;
-extern u8 smallestVlaueInCurrentFrame;
-extern u8 OSC_largest;
-extern u8 OSC_smallest;
-extern OSC_RunningState_t runningState;
-extern NVIC_Interrupt_t tftDmaInterruptNumber;
-extern NVIC_Interrupt_t timTrigLineDrawingInterrupt;
+
 
 void OSC_voidInitApp(void)
 {
-	OSC_smallest = 0;
-	OSC_largest = 0;
+	/*	Auto calibrate voltage per div, voltage gain and time per div	*/
+	OSC_voidAutoCalibrate();
 
-	drawingState = OSC_LineDrawingState_3;
-
-	tftScrollCounter = 0;
-
-	tftIsUnderUsage = false;
-
-	tftDmaInterruptNumber = 0;
-
-	peakToPeakValueInCurrentFrame = 0;
-	largestVlaueInCurrentFrame = 0;
-	smallestVlaueInCurrentFrame = 0;
-
-	timTrigLineDrawingInterrupt = 0;
-
-	isInfoPixArrPrepared = false;
-
-	enter = false;
-
-	currentMicroVoltsPerPix = 26000;
-	currentMicroSecondsPerPix = 100;
-
-	currentUsedAdcChannel = 0;
-
-	tftScrollCounterMax = 128;
-
-	runningState = OSC_RunningState_NormalMode;
-
-	paused = false;
+	/*	start display refresh trigger	*/
+	OSC_voidStartSignalDrawing();
 }
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
 
 
 

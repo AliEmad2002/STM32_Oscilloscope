@@ -37,44 +37,34 @@
 /*	SELF	*/
 #include "Oscilloscope_config.h"
 #include "Oscilloscope_Private.h"
+#include "Oscilloscope_init_Global.h"
 #include "Oscilloscope_init_MCAL.h"
 #include "Oscilloscope_init_HAL.h"
 #include "Oscilloscope_interface.h"
 
-extern TFT2_t OSC_LCD;
-extern u32 currentMicroSecondsPerPix;
-extern u32 currentMicroVoltsPerPix;
-extern b8 tftIsUnderUsage;
-extern u8 tftScrollCounter;
-extern u8 tftScrollCounterMax;
-extern u8 currentUsedAdcChannel;
-extern b8 paused;
-extern u8 peakToPeakValueInCurrentFrame;
-extern OSC_LineDrawingState_t drawingState;
-extern u16 infoPixArr[1][1];
-extern b8 isInfoPixArrPrepared;
-extern u8 largestVlaueInCurrentFrame;
-extern u8 smallestVlaueInCurrentFrame;
-extern u8 OSC_largest;
-extern u8 OSC_smallest;
-extern OSC_RunningState_t runningState;
-extern NVIC_Interrupt_t tftDmaInterruptNumber;
-extern u64 lineDrawingRatemHzMin;
-
-
-
-
+/*******************************************************************************
+ * Extern global variables (from private.c file):
+ ******************************************************************************/
+extern TFT2_t Global_LCD;
+extern u16 Global_QuarterOfTheDisplay[40][128];
+extern b8 Global_LCDIsUnderUsage;
+extern NVIC_Interrupt_t Global_LCDDmaInterruptNumber;
+extern NVIC_Interrupt_t Global_RefreshQuarterOfTheDisplayTimerInterruptNumber;
+extern u8 Global_PeakToPeakValueInCurrentFrame;
+extern u8 Global_LargestVlaueInCurrentFrame;
+extern u8 Global_SmallestVlaueInCurrentFrame;
+extern u8 Global_NumberOfsentQuartersSinceLastInfoUpdate;
+extern u8 Global_NumberOfsentQuartersRequieredForInfoUpdate;
+extern b8 Global_Enter;
+extern u32 Global_CurrentMicroVoltsPerPix;
+extern u32 Global_CurrentMicroSecondsPerPix;
+extern u8 Global_CurrentUsedAdcChannelIndex;
+extern OSC_RunningState_t Global_RunningState;
+extern b8 Global_Paused;
 
 /*******************************************************************************
  * Mode switching:
  ******************************************************************************/
-void OSC_voidStartNormalMode(void)
-{
-	OSC_voidStartSignalDrawing();
-
-	OSC_voidStartInfoDrawing();
-}
-
 void OSC_voidEnterNormalMode(void)
 {
 	OSC_voidResume();
@@ -82,42 +72,30 @@ void OSC_voidEnterNormalMode(void)
 
 void OSC_voidEnterMathMode(void)
 {
-	// TODO: as memory is never enough, let the menu take 1/3 of the screen only
+
 }
 
 void OSC_voidPause(void)
 {
-	if (runningState == OSC_RunningState_NormalMode)
-	{
-		/*	stop line drawing trigger counter	*/
-		TIM_voidDisableCounter(LCD_REFRESH_TRIGGER_TIMER_UNIT_NUMBER);
-
-		/*	stop info drawing trigger counter	*/
-		TIM_voidDisableCounter(LCD_INFO_DRAWING_TRIGGER_TIMER_UNIT_NUMBER);
-	}
+	/*	stop display refresh trigger counter	*/
+	TIM_voidDisableCounter(LCD_REFRESH_TRIGGER_TIMER_UNIT_NUMBER);
 
 	/*	update flag	*/
-	paused = true;
+	Global_Paused = true;
 }
 
 void OSC_voidResume(void)
 {
-	if (runningState == OSC_RunningState_NormalMode)
-	{
-		/*	start line drawing trigger counter	*/
-		TIM_voidEnableCounter(LCD_REFRESH_TRIGGER_TIMER_UNIT_NUMBER);
-
-		/*	start info drawing trigger counter	*/
-		TIM_voidEnableCounter(LCD_INFO_DRAWING_TRIGGER_TIMER_UNIT_NUMBER);
-	}
+	/*	start display refresh trigger counter	*/
+	TIM_voidEnableCounter(LCD_REFRESH_TRIGGER_TIMER_UNIT_NUMBER);
 
 	/*	update flag	*/
-	paused = false;
+	Global_Paused = false;
 }
 
 void OSC_voidTrigPauseResume(void)
 {
-	if (!paused)
+	if (!Global_Paused)
 	{
 		OSC_voidPause();
 	}
@@ -131,30 +109,14 @@ void OSC_voidTrigPauseResume(void)
 /*******************************************************************************
  * Main thread functions:
  ******************************************************************************/
-extern void OSC_voidOpenMenu(void);
-
 void OSC_voidMainSuperLoop(void)
 {
-	//OSC_voidOpenMenu();
-
-	//while(1);
-
-	/*	start normal (Y-t) mode	*/
-	OSC_voidStartNormalMode();
-
-	OSC_voidPause();
-
-	/*	Auto calibrate at startup	*/
-	OSC_voidAutoCalibVoltAndTimePerDiv();
-
-	OSC_voidResume();
-
 	while (1)
 	{
-		if (paused)
+		if (Global_Paused)
 			continue;
 
-		if (runningState == OSC_RunningState_NormalMode)
+		else if (runningState == OSC_RunningState_NormalMode)
 		{
 			if (isInfoPixArrPrepared == false)
 				OSC_voidPrepareInfoPixArray();
@@ -162,13 +124,22 @@ void OSC_voidMainSuperLoop(void)
 	}
 }
 
-void OSC_voidPrepareInfoPixArray(void)
+void OSC_voidGetInfoStr(char* str)
 {
+	char hzPre;
+	char voltPre;
+	u32 vPPInt, vPPFrac;
+
+	/*
+	 * read frequency value (this reading is based on the value of OC register
+	 * at time of reading).
+	 */
 	u64 freqmHz = TIM_u64GetFrequencyMeasured(FREQ_MEASURE_TIMER_UNIT_NUMBER);
 
-	char hzPre;
+	/*	peak to peak voltage (in uV)	*/
+	u64 vPP =
+		Global_PeakToPeakValueInCurrentFrame * Global_CurrentMicroVoltsPerPix;
 
-	u8 str[128];
 	if (freqmHz < 1000)
 		hzPre = 'm';
 	else if (freqmHz < 1000000)
@@ -192,12 +163,6 @@ void OSC_voidPrepareInfoPixArray(void)
 		hzPre = ' ';
 	}
 
-	u64 vPP = peakToPeakValueInCurrentFrame * currentMicroVoltsPerPix;
-
-	char voltPre;
-
-	u32 vPPInt, vPPFrac;
-
 	if (vPP < 1000)
 	{
 		voltPre = 'u';
@@ -217,77 +182,90 @@ void OSC_voidPrepareInfoPixArray(void)
 		vPPFrac = vPP % 1000000;
 	}
 
+	/*	fraction is maximumly of 3 digits	*/
 	while (vPPFrac > 100)
 		vPPFrac /= 10;
 
 	sprintf(
 		(char*)str, "F = %u%cHz\nVpp = %u.%u%cV",
 		(u32)freqmHz, hzPre, vPPInt, vPPFrac, voltPre);
+}
+
+void OSC_voidDrawInfoOnPixArray(void)
+{
+	/*	the string that info is stored at before drawing	*/
+	char str[128];
+
+	OSC_voidGetInfoStr(str);
 
 	Txt_voidCpyStrToStaticPixArrNormalOrientation(
 			str, colorRed.code565, colorBlack.code565, 1,
 			Txt_HorizontalMirroring_Disabled, Txt_VerticalMirroring_Disabled,
-			0, 0, 30, 128, infoPixArr);
+			0, 0, 128, 40, Global_QuarterOfTheDisplay);
 
-	/*	raise prepared flag	*/
-	isInfoPixArrPrepared = true;
+	/*	raise ready flag	*/
+	Global_IsPixArrReady = true;
 }
 
-void OSC_voidAutoCalibVoltAndTimePerDiv(void)
+void OSC_voidAutoCalibrate(void)
 {
+	/** Time calibration	**/
 	/*	get signal frequency	*/
 	u64 freqmHz = TIM_u64GetFrequencyMeasured(FREQ_MEASURE_TIMER_UNIT_NUMBER);
-	if (freqmHz > 1000000000)
-		freqmHz = 0;
 
 	/*
 	 * set time per pix such that user can see 3 periods of the signal in one
-	 frame	*/
-	currentMicroSecondsPerPix = 1000000000ul / freqmHz / tftScrollCounterMax;
+	 * frame.
+	 * eqn: time_per_pix = 3 * T / 120
+	 * where T is the periodic time of the signal,
+	 * 120 is the width of the image.
+	 */
+	if (freqmHz == 0)
+		Global_CurrentMicroSecondsPerPix = 1;
+	else
+		Global_CurrentMicroSecondsPerPix =
+			1000000000ul / freqmHz / 40;
 
-	u64 lineDrawingRatemHz = tftScrollCounterMax *  freqmHz;
-
-	if (lineDrawingRatemHz > lineDrawingRatemHzMax)
-		lineDrawingRatemHz = lineDrawingRatemHzMax;
-	else if (lineDrawingRatemHz < lineDrawingRatemHzMin)
-		lineDrawingRatemHz = (lineDrawingRatemHzMax) / 1;
-
-	TIM_u64SetFreqByChangingArr(
-		LCD_REFRESH_TRIGGER_TIMER_UNIT_NUMBER, lineDrawingRatemHz);
-
-	/**	find the proper gain to display	**/
+	/**	Gain and voltage calibration	**/
 	for (u8 i = 0; i < CHANNEL_1_NUMBER_OF_LEVELS; i++)
 	{
 		ADC_ChannelNumber_t adcCh = oscCh1AdcChannels[i].adcChannelNumber;
-		/*	make adcCh the one to be converted and watchdog-ed	*/
+
+		/*	make 'adcCh' the one to be converted and watchdog-ed	*/
 		ADC_voidSetSequenceRegular(
 			ADC_UnitNumber_1, ADC_RegularSequenceNumber_1, adcCh);
 
-		/*	Clear AED flag, in case previous rise	*/
+		/*	Clear AWD flag, in case previous rise	*/
 		ADC_voidClearStatusFlag(ADC_UnitNumber_1, ADC_StatusFlag_AWD);
 
-		/*	wait for 2 periods of this signal, at least 1 ms	*/
+		/*
+		 * wait for 2 periods of this signal, at least 1 ms, and maximumly 500ms
+		 */
 		u32 delayTimeMs = 2000000u / freqmHz;
-		if (delayTimeMs == 0 || delayTimeMs > 1)
+		if (delayTimeMs == 0)
 			delayTimeMs = 1;
+		else if (delayTimeMs > 500)
+			delayTimeMs = 500;
 
 		Delay_voidBlockingDelayMs(delayTimeMs);
 
-		/**	check analog watchdog flag	**/
-		/*
-		 * if it was set, then this gain is not the proper one, clear AWD flag
+		/*	check analog watchdog flag. If it was set, then this gain is not
+		 * the proper one, clear AWD flag and continue in the loop.
 		 */
 		if (ADC_b8GetStatusFlag(ADC_UnitNumber_1, ADC_StatusFlag_AWD) == true)
 		{
 			ADC_voidClearStatusFlag(ADC_UnitNumber_1, ADC_StatusFlag_AWD);
+			continue;
 		}
-		/*	otherwise, use this gain	*/
+		/*	otherwise, use this gain, and break out of the loop	*/
 		else
 		{
-			currentMicroVoltsPerPix =
+			Global_CurrentMicroVoltsPerPix =
 				(oscCh1AdcChannels[i].maxVPPinMilliVolts * 1000ul) / 128;
 
-			currentUsedAdcChannel = i;
+			Global_CurrentUsedAdcChannelIndex = i;
+
+			break;
 		}
 	}
 }
@@ -295,157 +273,7 @@ void OSC_voidAutoCalibVoltAndTimePerDiv(void)
 /*******************************************************************************
  * ISR callbacks:
  ******************************************************************************/
-void OSC_voidDMATransferCompleteCallback(void)
-{
-	/*
-	 * the word 'state' in the following comments is defined in description of
-	 * "OSC_LineDrawingState_t" enum definition)
-	 */
-	switch(drawingState)
-	{
-	case OSC_LineDrawingState_1: // case the just ended operation is of state 1.
-		/*	start state 2	*/
-		TFT2_voidFillDMA(&OSC_LCD, &colorRedU8Val, OSC_largest - OSC_smallest + 1);
-		/*	update state	*/
-		drawingState = OSC_LineDrawingState_2;
-	break;
 
-	case OSC_LineDrawingState_2: // case the just ended operation is of state 2.
-		/*	start state 3	*/
-		TFT2_voidFillDMA(&OSC_LCD, &colorBlackU8Val, 125 - OSC_largest);
-		/*	update state	*/
-		drawingState = OSC_LineDrawingState_3;
-	break;
-
-	case OSC_LineDrawingState_3: // case the just ended operation is of state 3.
-		TFT2_voidClearDMATCFlag(&OSC_LCD);
-		TFT2_voidDisableDMAChannel(&OSC_LCD);
-		/*	scroll TFT display	*/
-		TFT2_voidScroll(&OSC_LCD, tftScrollCounter);
-		/*	release semaphore	*/
-		tftIsUnderUsage = false;
-	break;
-	}
-}
-
-void OSC_voidTimToStartDrawingNextLineCallback(void)
-{
-	static u8 lastRead = 0;
-
-	/*
-	 * check that previous line drawing is done. otherwise execute errorHandler.
-	 */
-	if (tftIsUnderUsage == true)
-	{
-		//ErrorHandler_voidExecute(9);
-		trace_printf("dsa\n");
-		return;
-	}
-
-	/*	take semaphore	*/
-	tftIsUnderUsage = true;
-
-	/*	update state	*/
-	drawingState = OSC_LineDrawingState_1;
-
-	/*	read ADC	*/
-	u8 adcRead = 125 -
-		(u8)(((u32)ADC_u16GetDataRegular(ADC_UnitNumber_1)) * 125u / 4095u);
-
-	if (adcRead > lastRead)
-	{
-		OSC_largest = adcRead;
-		OSC_smallest = lastRead;
-	}
-	else
-	{
-		OSC_largest = lastRead;
-		OSC_smallest = adcRead;
-	}
-
-	TFT2_SET_Y_BOUNDARIES(&OSC_LCD, tftScrollCounter, tftScrollCounter);
-
-	TFT2_WRITE_CMD(&OSC_LCD, TFT_CMD_MEM_WRITE);
-
-	TFT2_ENTER_DATA_MODE(&OSC_LCD);
-									// i.e.: OSC_smallest - 1 shifted up by 2
-	TFT2_voidFillDMA(&OSC_LCD, &colorBlackU8Val, OSC_smallest + 1);
-
-	/*	update peak to peak calculation parameters	*/
-	if (adcRead > largestVlaueInCurrentFrame)
-		largestVlaueInCurrentFrame = adcRead;
-	if (adcRead < smallestVlaueInCurrentFrame)
-		smallestVlaueInCurrentFrame = adcRead;
-	peakToPeakValueInCurrentFrame =
-		largestVlaueInCurrentFrame - smallestVlaueInCurrentFrame;
-
-	/*	iteration control	*/
-	tftScrollCounter++;
-	if (tftScrollCounter > tftScrollCounterMax)
-	{
-		tftScrollCounter = 0;
-		/*
-		 * for every new current frame, "largestVlaueInCurrentFrame" and
-		 * "smallestVlaueInCurrentFrame" are both equal to the very last reading
-		 * value of the just ended frame.
-		 * (see definition of "current frame" in description of
-		 * "static u8 peakToPeakValueInCurrentFrame" above in this file)
-		 */
-		largestVlaueInCurrentFrame = adcRead;
-		smallestVlaueInCurrentFrame = adcRead;
-
-	}
-	lastRead = adcRead;
-
-	TIM_voidClearStatusFlag(
-		LCD_REFRESH_TRIGGER_TIMER_UNIT_NUMBER, TIM_Status_Update);
-}
-
-void OSC_voidTimToStartDrawingInfoCallback(void)
-{
-	/*
-	 * if TFT is under usage or infoPixArr is not yet ready, return. As showing
-	 * info is not so critical, and I don't want it to affect the signal drawing
-	 */
-	if (tftIsUnderUsage == true || isInfoPixArrPrepared == false)
-	{
-		TIM_voidClearStatusFlag(
-			LCD_INFO_DRAWING_TRIGGER_TIMER_UNIT_NUMBER, TIM_Status_Update);
-		return;
-	}
-
-	/*	Take TFT semaphore	*/
-	tftIsUnderUsage = true;
-
-	/*	Pause DMA transfer complete interrupt	*/
-	NVIC_voidDisableInterrupt(tftDmaInterruptNumber);
-
-	/*	Set info image boundaries on TFT	*/
-	TFT2_SET_X_BOUNDARIES(&OSC_LCD, 0, 127);
-	TFT2_SET_Y_BOUNDARIES(&OSC_LCD, 130, 159);
-
-	/*	Send info image by DMA	*/
-	TFT2_voidSendPixels(&OSC_LCD, (u16*)infoPixArr, 128 * 30);
-
-	/*
-	 * Wait for transfer complete,
-	 * Then clear DMA transfer complete flag,
-	 * Then disable DMA.
-	 */
-	TFT2_voidWaitCurrentDataTransfer(&OSC_LCD);
-
-	/*	Enable/resume DMA transfer complete interrupt	*/
-	NVIC_voidEnableInterrupt(tftDmaInterruptNumber);
-
-	/*	Releases TFT semaphore	*/
-	tftIsUnderUsage = false;
-
-	/*	clear infoPixArr ready flag	*/
-	isInfoPixArrPrepared = false;
-
-	TIM_voidClearStatusFlag(
-		LCD_INFO_DRAWING_TRIGGER_TIMER_UNIT_NUMBER, TIM_Status_Update);
-}
 
 
 

@@ -55,7 +55,7 @@ void OSC_voidPrepareInfoPixArray(void);
  * auto calibrates volts per div and time per div to properly
  * display the signal
  */
-void OSC_voidAutoCalibVoltAndTimePerDiv(void);
+void OSC_voidAutoCalibrate(void);
 
 /*******************************************************************************
  * ISR callbacks:

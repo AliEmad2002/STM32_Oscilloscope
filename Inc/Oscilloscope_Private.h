@@ -18,26 +18,11 @@
 static const u64 lineDrawingRatemHzMax = 8000000;
 
 
-/*	enum that describes the different states of line drawing	*/
 typedef enum{
-	OSC_LineDrawingState_1,	// means that the last started operation is:
-							// scroll, read ADC, set new drawing boundaries
-							// and draw black segment from 0 to
-							// 'OSC_smallest' - 1.
-
-	OSC_LineDrawingState_2,	// means that the last started operation is:
-							// Drawing red segment from 'OSC_smallest' to
-							// 'OSC_largeest'.
-
-	OSC_LineDrawingState_3,	// means that the last started operation is:
-							// Drawing red segment from 'OSC_largeest' + 1 to
-							// 127.
-}OSC_LineDrawingState_t;
-
-
-typedef enum{
-	OSC_RunningState_NormalMode,
-	OSC_RunningState_MathMode
+	OSC_RunningState_Preparing1stQuarter,
+	OSC_RunningState_Preparing2ndQuarter,
+	OSC_RunningState_Preparing3rdQuarter,
+	OSC_RunningState_Preparing4ndQuarter, // i.e.: info quarter
 }OSC_RunningState_t;
 
 /*
@@ -46,6 +31,16 @@ typedef enum{
  */
 void OSC_voidStartSignalDrawing(void);
 
-void OSC_voidStartInfoDrawing(void);
+/*	This definition, along with the
+ * "Global_NumberOfsentQuartersSinceLastInfoUpdate" defined in private.c,
+ * determine how often and when info image is updated
+ */
+#define NUMBER_OF_SENT_QUARTERS_REQUIERED_FOR_INFO_UPDATE	100
+
+/*	pixels per div	*/
+#define PIXELS_PER_VOLTAGE_DIV								16
+
+#define PIXELS_PER_TIME_DIV									15
 
 #endif /* INCLUDE_APP_OSCILLOSCOPE_PRIVATE_H_ */
+
