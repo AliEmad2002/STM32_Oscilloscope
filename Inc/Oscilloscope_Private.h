@@ -40,6 +40,10 @@ typedef enum{
 	OSC_RunningState_MathMode
 }OSC_RunningState_t;
 
+/*
+ * This function enables the periodic event (every 10ms) of sending the proper
+ * 1/4 of the display.
+ */
 void OSC_voidStartSignalDrawing(void);
 
 void OSC_voidStartInfoDrawing(void);

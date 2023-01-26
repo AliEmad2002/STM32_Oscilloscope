@@ -30,21 +30,18 @@
 
 
 
-/*	static objects	*/
-TFT2_t OSC_LCD;
+/*	TFT LCD object	*/
+TFT2_t Global_LCD;
 
-u8 OSC_smallest;		// these two variables represent smallest and
-u8 OSC_largest;			// largest points in the current line's active
-						// (red) segment.
+/*	array of pixels in which 1/4 of the full display is stored	*/
+u16 Global_QuarterOfTheDisplay[40][128];
 
-OSC_LineDrawingState_t drawingState;
+/*	binary semaphore for LCD interfacing line	*/
+b8 Global_LCDIsUnderUsage;
 
-u8 tftScrollCounter;
-
-/*	binary semaphore for TFT interfacing line	*/
-b8 tftIsUnderUsage;
-
-NVIC_Interrupt_t tftDmaInterruptNumber;
+/*	NVIC indexes	*/
+NVIC_Interrupt_t Global_LCDDmaInterruptNumber;
+NVIC_Interrupt_t Global_RefreshQuarterOfTheDisplayTimerInterruptNumber;
 
 /*
  * Peak to peak value in a single frame.
@@ -54,61 +51,33 @@ NVIC_Interrupt_t tftDmaInterruptNumber;
  * equals "tftScrollCounterMax".
  * Unit is: [TFT screen pixels].
  */
-u8 peakToPeakValueInCurrentFrame;
-u8 largestVlaueInCurrentFrame;
-u8 smallestVlaueInCurrentFrame;
+u8 Global_PeakToPeakValueInCurrentFrame;
+u8 Global_LargestVlaueInCurrentFrame;
+u8 Global_SmallestVlaueInCurrentFrame;
 
-NVIC_Interrupt_t timTrigLineDrawingInterrupt;
-
-u16 infoPixArr[30][128];
-b8 isInfoPixArrPrepared;
+/*	These two, determine how often and when info image is updated	*/
+u8 Global_NumberOfsentQuartersSinceLastInfoUpdate;
+u8 Global_NumberOfsentQuartersRequieredForInfoUpdate;
 
 /*	state of enter button	*/
-b8 enter;
+b8 Global_Enter;
 
-u32 currentMicroVoltsPerPix;
-u32 currentMicroSecondsPerPix;
+/*	current resolution values	*/
+u32 Global_CurrentMicroVoltsPerPix;
+u32 Global_CurrentMicroSecondsPerPix;
+u8 Global_CurrentUsedAdcChannelIndex;
 
-u8 currentUsedAdcChannel;
+/*	current running state of the machine	*/
+OSC_RunningState_t Global_RunningState;
 
-/*******************************************************************************
- * run time changeable settings:
- ******************************************************************************/
-u64 lineDrawingRatemHzMin;
-
-u8 tftScrollCounterMax;
-
-
-
-OSC_RunningState_t runningState;
-
-b8 paused;
-
-
-
-
-
-
-extern void OSC_voidTimToStartDrawingNextLineCallback(void);
-
-extern void OSC_voidTimToStartDrawingInfoCallback(void);
+/*	pausing of display	*/
+b8 Global_Paused;
 
 void OSC_voidStartSignalDrawing(void)
 {
 	/*	start drawing	*/
-	lineDrawingRatemHzMin = TIM_u64InitTimTrigger(
-		// TODO: set this '100' to a configurable startup value
-		LCD_REFRESH_TRIGGER_TIMER_UNIT_NUMBER, lineDrawingRatemHzMax / 100,
-		lineDrawingRatemHzMax, OSC_voidTimToStartDrawingNextLineCallback);
-}
-
-void OSC_voidStartInfoDrawing(void)
-{
 	(void)TIM_u64InitTimTrigger(
-		LCD_INFO_DRAWING_TRIGGER_TIMER_UNIT_NUMBER,
-		// TODO: set these numbers to a configurable startup values
-		1600,
-		1500000, // a value that ensures a possible rate of 2Hz
-		OSC_voidTimToStartDrawingInfoCallback);
+		// TODO: set this '100' to a configurable startup value
+		LCD_REFRESH_TRIGGER_TIMER_UNIT_NUMBER, 100000ul,
+		100000ul * 2, OSC_voidTimRefreshQuarterCallback);
 }
-
