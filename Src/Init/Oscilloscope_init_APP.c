@@ -34,8 +34,9 @@
 #include "Oscilloscope_init_APP.h"
 
 
+extern void OSC_voidAutoCalibrate(void);
 
-void OSC_voidInitApp(void)
+void OSC_voidInitAPP(void)
 {
 	/*	Auto calibrate voltage per div, voltage gain and time per div	*/
 	OSC_voidAutoCalibrate();

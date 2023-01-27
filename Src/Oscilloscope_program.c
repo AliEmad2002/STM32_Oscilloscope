@@ -45,65 +45,44 @@
 /*******************************************************************************
  * Extern global variables (from private.c file):
  ******************************************************************************/
-extern TFT2_t Global_LCD;
-extern u16 Global_QuarterOfTheDisplay[40][128];
-extern b8 Global_LCDIsUnderUsage;
-extern NVIC_Interrupt_t Global_LCDDmaInterruptNumber;
-extern NVIC_Interrupt_t Global_RefreshQuarterOfTheDisplayTimerInterruptNumber;
-extern u8 Global_PeakToPeakValueInCurrentFrame;
-extern u8 Global_LargestVlaueInCurrentFrame;
-extern u8 Global_SmallestVlaueInCurrentFrame;
-extern u8 Global_NumberOfsentQuartersSinceLastInfoUpdate;
-extern u8 Global_NumberOfsentQuartersRequieredForInfoUpdate;
-extern b8 Global_Enter;
-extern u32 Global_CurrentMicroVoltsPerPix;
-extern u32 Global_CurrentMicroSecondsPerPix;
-extern u8 Global_CurrentUsedAdcChannelIndex;
-extern OSC_RunningState_t Global_RunningState;
-extern b8 Global_Paused;
+extern volatile TFT2_t Global_LCD;
+extern volatile b8 Global_LCDIsUnderUsage;
+extern volatile u16 Global_QuarterOfTheDisplay[40][128];
+extern volatile b8 Global_IsPixArrReady;
+extern volatile NVIC_Interrupt_t Global_LCDDmaInterruptNumber;
+extern volatile NVIC_Interrupt_t Global_RefreshQuarterOfTheDisplayTimerInterruptNumber;
+extern volatile u8 Global_PeakToPeakValueInCurrentFrame;
+extern volatile u8 Global_LargestVlaueInCurrentFrame;
+extern volatile u8 Global_SmallestVlaueInCurrentFrame;
+extern volatile u8 Global_NumberOfsentQuartersSinceLastInfoUpdate;
+extern volatile b8 Global_Enter;
+extern volatile u32 Global_CurrentMicroVoltsPerPix;
+extern volatile u32 Global_CurrentMicroSecondsPerPix;
+extern volatile u8 Global_CurrentUsedAdcChannelIndex;
+extern volatile OSC_RunningState_t Global_RunningState;
+extern volatile b8 Global_Paused;
 
 /*******************************************************************************
  * Mode switching:
  ******************************************************************************/
-void OSC_voidEnterNormalMode(void)
-{
-	OSC_voidResume();
-}
-
 void OSC_voidEnterMathMode(void)
 {
 
-}
-
-void OSC_voidPause(void)
-{
-	/*	stop display refresh trigger counter	*/
-	TIM_voidDisableCounter(LCD_REFRESH_TRIGGER_TIMER_UNIT_NUMBER);
-
-	/*	update flag	*/
-	Global_Paused = true;
-}
-
-void OSC_voidResume(void)
-{
-	/*	start display refresh trigger counter	*/
-	TIM_voidEnableCounter(LCD_REFRESH_TRIGGER_TIMER_UNIT_NUMBER);
-
-	/*	update flag	*/
-	Global_Paused = false;
 }
 
 void OSC_voidTrigPauseResume(void)
 {
 	if (!Global_Paused)
 	{
-		OSC_voidPause();
+		Global_Paused = true;
 	}
 
 	else
 	{
-		OSC_voidResume();
+		Global_Paused = false;
 	}
+
+	Delay_voidBlockingDelayMs(150);
 }
 
 /*******************************************************************************
@@ -111,16 +90,256 @@ void OSC_voidTrigPauseResume(void)
  ******************************************************************************/
 void OSC_voidMainSuperLoop(void)
 {
+	/*
+	 * ADC converted samples are stored here first.
+	 * Note: 120 sample == full image frame.
+	 */
+	volatile u16 adcReadArr[120];
+
+	/*
+	 * These are the image buffers.
+	 * notice that: (120 / n) must be an integer
+	 */
+	const u8 n = 20;
+	u16 pixArr1[n][128];
+	u16 pixArr2[n][128];
+
+	/*	set screen boundaries for full signal image area	*/
+	TFT2_SET_X_BOUNDARIES(&Global_LCD, 0, 127);
+	TFT2_SET_Y_BOUNDARIES(&Global_LCD, 0, 119);
+
+	/*	start data writing mode on screen	*/
+	TFT2_WRITE_CMD(&Global_LCD, TFT_CMD_MEM_WRITE);
+	TFT2_ENTER_DATA_MODE(&Global_LCD);
+
+	/*	voltage in pixels	*/
+	u8 lastRead = 0;
+	u8 currentRead = 0;
+
+	u8 currentSmaller;
+	u8 currentLarger;
+
+	/*	store STK ticks per second here
+	 * (to not use the function more than once)
+	 */
+	volatile u32 stkTicksPerSecond = STK_u32GetTicksPerSecond();
+
+	/*	set source address of each of the line segment drawing DMA channels	*/
+	DMA_voidSetPeripheralAddress(
+		DMA_UnitNumber_1, FIRST_LINE_SEGMENT_DMA_CHANNEL,
+		(void*)&LCD_BACKGROUND_COLOR_U16);
+
+	DMA_voidSetPeripheralAddress(
+		DMA_UnitNumber_1, SECOND_LINE_SEGMENT_DMA_CHANNEL,
+		(void*)&LCD_MAIN_DRAWING_COLOR_U16);
+
+	DMA_voidSetPeripheralAddress(
+		DMA_UnitNumber_1, THIRD_LINE_SEGMENT_DMA_CHANNEL,
+		(void*)&LCD_BACKGROUND_COLOR_U16);
+
 	while (1)
 	{
-		if (Global_Paused)
-			continue;
+		/*
+		 * calculate STK ticks to wait between each sample and the one next to
+		 * it. This has to be done each loop, as user may change
+		 * "Global_CurrentMicroSecondsPerPix" in an ISR.
+		 * Eqn.:
+		 * N_ticks_sample =
+		 * 	(microSecondsPerPix * STK_TicksPerSecond) / 1000000
+		 */
+		volatile u64 ticksToWait =
+			((u64)Global_CurrentMicroSecondsPerPix * stkTicksPerSecond) /
+			1000000ul;
 
-		else if (runningState == OSC_RunningState_NormalMode)
+		/*	take 120 samples (one frame, i.e.: 3/4 of the display) with interval
+		 * between each two of them equal to:
+		 * "Global_CurrentMicroSecondsPerPix".
+		 */
+		if (!Global_Paused)
 		{
-			if (isInfoPixArrPrepared == false)
-				OSC_voidPrepareInfoPixArray();
+			for (u8 i = 0; i < 120; i++)
+			{
+				/*	timestamp start time	*/
+				volatile u64 startTime = STK_u64GetElapsedTicks();
+
+				/*	store ADC read	*/
+				adcReadArr[i] = ADC_u16GetDataRegularUnit1();
+
+				/*	wait for sampling periodic time to pass	*/
+				while(STK_u64GetElapsedTicks() - startTime < ticksToWait);
+			}
 		}
+
+		/*	counter of the processed samples of current image frame	*/
+		u8 readCount = 0;
+
+		/*	draw current image frame of screen	*/
+		while(1)
+		{
+			/**	pixArr1	**/
+			/*	Draw in "pixArr1[]".	*/
+			for (u8 i = 0; i < n; i++)
+			{
+				/*
+				 * read ADC converted value
+				 * Eqn.: voltage_in_pix = voltage_in_volt * N_pixels_per_volt
+				 *  = 10^5 * 33 * Vadc / microVoltsPerPix / 4096
+				 */
+				currentRead =
+					((3300000ul * (u64)adcReadArr[readCount++]) /
+					(u64)Global_CurrentMicroVoltsPerPix) >> 12;
+
+				/*
+				 * find the smaller and the larger of 'currentRead' and 'lastRead'
+				 */
+				if (currentRead > lastRead)
+				{
+					currentSmaller = lastRead;
+					currentLarger = currentRead;
+				}
+				else
+				{
+					currentSmaller = currentRead;
+					currentLarger = lastRead;
+				}
+
+				lastRead = currentRead;
+
+				/*	wait for DMA 1st, 2nd, 3rd channels transfer complete	*/
+				DMA_voidWaitTillChannelIsFreeAndDisableIt(
+					DMA_UnitNumber_1, FIRST_LINE_SEGMENT_DMA_CHANNEL);
+
+				DMA_voidWaitTillChannelIsFreeAndDisableIt(
+					DMA_UnitNumber_1, SECOND_LINE_SEGMENT_DMA_CHANNEL);
+
+				DMA_voidWaitTillChannelIsFreeAndDisableIt(
+					DMA_UnitNumber_1, THIRD_LINE_SEGMENT_DMA_CHANNEL);
+
+				/*	draw background color from zero to just before smaller	*/
+				DMA_voidSetMemoryAddress(
+					DMA_UnitNumber_1, FIRST_LINE_SEGMENT_DMA_CHANNEL,
+					&pixArr1[i][0]);
+
+				DMA_voidSetNumberOfData(
+					DMA_UnitNumber_1, FIRST_LINE_SEGMENT_DMA_CHANNEL,
+					currentSmaller);
+
+				DMA_voidEnableChannel(
+					DMA_UnitNumber_1, FIRST_LINE_SEGMENT_DMA_CHANNEL);
+
+				/*	draw main color from smaller to larger	*/
+				DMA_voidSetMemoryAddress(
+					DMA_UnitNumber_1, SECOND_LINE_SEGMENT_DMA_CHANNEL,
+					&pixArr1[i][currentSmaller]);
+
+				DMA_voidSetNumberOfData(
+					DMA_UnitNumber_1, SECOND_LINE_SEGMENT_DMA_CHANNEL,
+					currentLarger - currentSmaller + 1);
+
+				DMA_voidEnableChannel(
+					DMA_UnitNumber_1, SECOND_LINE_SEGMENT_DMA_CHANNEL);
+
+				/*	draw background color from after larger to 127	*/
+				DMA_voidSetMemoryAddress(
+					DMA_UnitNumber_1, THIRD_LINE_SEGMENT_DMA_CHANNEL,
+					&pixArr1[i][currentLarger + 1]);
+
+				DMA_voidSetNumberOfData(
+					DMA_UnitNumber_1, THIRD_LINE_SEGMENT_DMA_CHANNEL,
+					127 - currentLarger);
+
+				DMA_voidEnableChannel(
+					DMA_UnitNumber_1, THIRD_LINE_SEGMENT_DMA_CHANNEL);
+			}
+
+			/*	Send them using DMA (Internally waits for DMA TC)	*/
+			TFT2_voidSendPixels(&Global_LCD, (u16*)pixArr1, n * 128);
+
+			if (readCount == 120)
+				break;
+
+			/**	pixArr2	**/
+			for (u8 i = 0; i < n; i++)
+			{
+				/*
+				 * read ADC converted value
+				 * Eqn.: voltage_in_pix = voltage_in_volt * N_pixels_per_volt
+				 *  = 10^5 * 33 * Vadc / microVoltsPerPix / 4096
+				 */
+				currentRead =
+					((3300000ul * (u64)adcReadArr[readCount++]) /
+					(u64)Global_CurrentMicroVoltsPerPix) >> 12;
+
+				/*
+				 * find the smaller and the larger of 'currentRead' and 'lastRead'
+				 */
+				if (currentRead > lastRead)
+				{
+					currentSmaller = lastRead;
+					currentLarger = currentRead;
+				}
+				else
+				{
+					currentSmaller = currentRead;
+					currentLarger = lastRead;
+				}
+
+				lastRead = currentRead;
+
+				/*	wait for DMA 1st, 2nd, 3rd channels transfer complete	*/
+				DMA_voidWaitTillChannelIsFreeAndDisableIt(
+					DMA_UnitNumber_1, FIRST_LINE_SEGMENT_DMA_CHANNEL);
+
+				DMA_voidWaitTillChannelIsFreeAndDisableIt(
+					DMA_UnitNumber_1, SECOND_LINE_SEGMENT_DMA_CHANNEL);
+
+				DMA_voidWaitTillChannelIsFreeAndDisableIt(
+					DMA_UnitNumber_1, THIRD_LINE_SEGMENT_DMA_CHANNEL);
+
+				/*	draw background color from zero to just before smaller	*/
+				DMA_voidSetMemoryAddress(
+					DMA_UnitNumber_1, FIRST_LINE_SEGMENT_DMA_CHANNEL,
+					&pixArr2[i][0]);
+
+				DMA_voidSetNumberOfData(
+					DMA_UnitNumber_1, FIRST_LINE_SEGMENT_DMA_CHANNEL,
+					currentSmaller);
+
+				DMA_voidEnableChannel(
+					DMA_UnitNumber_1, FIRST_LINE_SEGMENT_DMA_CHANNEL);
+
+				/*	draw main color from smaller to larger	*/
+				DMA_voidSetMemoryAddress(
+					DMA_UnitNumber_1, SECOND_LINE_SEGMENT_DMA_CHANNEL,
+					&pixArr2[i][currentSmaller]);
+
+				DMA_voidSetNumberOfData(
+					DMA_UnitNumber_1, SECOND_LINE_SEGMENT_DMA_CHANNEL,
+					currentLarger - currentSmaller + 1);
+
+				DMA_voidEnableChannel(
+					DMA_UnitNumber_1, SECOND_LINE_SEGMENT_DMA_CHANNEL);
+
+				/*	draw background color from after larger to 127	*/
+				DMA_voidSetMemoryAddress(
+					DMA_UnitNumber_1, THIRD_LINE_SEGMENT_DMA_CHANNEL,
+					&pixArr2[i][currentLarger + 1]);
+
+				DMA_voidSetNumberOfData(
+					DMA_UnitNumber_1, THIRD_LINE_SEGMENT_DMA_CHANNEL,
+					127 - currentLarger);
+
+				DMA_voidEnableChannel(
+					DMA_UnitNumber_1, THIRD_LINE_SEGMENT_DMA_CHANNEL);
+			}
+
+			/*	Send them using DMA (Internally waits for DMA TC)	*/
+			TFT2_voidSendPixels(&Global_LCD, (u16*)pixArr2, n * 128);
+
+			if (readCount == 120)
+				break;
+		}
+
 	}
 }
 
@@ -227,9 +446,12 @@ void OSC_voidAutoCalibrate(void)
 			1000000000ul / freqmHz / 40;
 
 	/**	Gain and voltage calibration	**/
-	for (u8 i = 0; i < CHANNEL_1_NUMBER_OF_LEVELS; i++)
+	ADC_ChannelNumber_t adcCh;
+	u8 i = 0;
+
+	for (; i < CHANNEL_1_NUMBER_OF_LEVELS; i++)
 	{
-		ADC_ChannelNumber_t adcCh = oscCh1AdcChannels[i].adcChannelNumber;
+		adcCh = oscCh1AdcChannels[i].adcChannelNumber;
 
 		/*	make 'adcCh' the one to be converted and watchdog-ed	*/
 		ADC_voidSetSequenceRegular(
@@ -257,56 +479,30 @@ void OSC_voidAutoCalibrate(void)
 			ADC_voidClearStatusFlag(ADC_UnitNumber_1, ADC_StatusFlag_AWD);
 			continue;
 		}
-		/*	otherwise, use this gain, and break out of the loop	*/
+		/*	otherwise, break	*/
 		else
 		{
-			Global_CurrentMicroVoltsPerPix =
-				(oscCh1AdcChannels[i].maxVPPinMilliVolts * 1000ul) / 128;
-
-			Global_CurrentUsedAdcChannelIndex = i;
-
 			break;
 		}
 	}
+
+	/*	if the proper gain was not found in loop, increment 'i'	*/
+	if (i == CHANNEL_1_NUMBER_OF_LEVELS)
+		i--;
+
+	/*	tell ADC that this is the channel to be converted	*/
+	ADC_voidSetSequenceRegular(
+		ADC_UnitNumber_1, ADC_RegularSequenceNumber_1, adcCh);
+
+	/*	set global parameters	*/
+	Global_CurrentMicroVoltsPerPix =
+		(oscCh1AdcChannels[i].maxVPPinMilliVolts * 1000ul) / 128;
+
+	Global_CurrentUsedAdcChannelIndex = i;
+
+	Delay_voidBlockingDelayMs(150);
 }
 
 /*******************************************************************************
  * ISR callbacks:
  ******************************************************************************/
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-

@@ -31,24 +31,24 @@
 
 
 /*	TFT LCD object	*/
-TFT2_t Global_LCD;
+volatile TFT2_t Global_LCD;
 
 /*	binary semaphore for LCD interfacing line	*/
-b8 Global_LCDIsUnderUsage;
+volatile b8 Global_LCDIsUnderUsage;
 
 /*	array of pixels in which 1/4 of the full display is stored	*/
-u16 Global_QuarterOfTheDisplay[40][128];
+//u16 Global_QuarterOfTheDisplay[40][128];
 
 /*
  * flag that tells if the previous array is done being prepared and ready to be
  * sent. Used in debugging and making sure that refresh rate is not much faster
  * that processing pixels.
  */
-b8 Global_IsPixArrReady;
+volatile b8 Global_IsPixArrReady;
 
 /*	NVIC indexes	*/
-NVIC_Interrupt_t Global_LCDDmaInterruptNumber;
-NVIC_Interrupt_t Global_RefreshQuarterOfTheDisplayTimerInterruptNumber;
+volatile NVIC_Interrupt_t Global_LCDDmaInterruptNumber;
+volatile NVIC_Interrupt_t Global_RefreshQuarterOfTheDisplayTimerInterruptNumber;
 
 /*
  * Peak to peak value in a single frame.
@@ -58,34 +58,36 @@ NVIC_Interrupt_t Global_RefreshQuarterOfTheDisplayTimerInterruptNumber;
  * equals "tftScrollCounterMax".
  * Unit is: [TFT screen pixels].
  */
-u8 Global_PeakToPeakValueInCurrentFrame;
-u8 Global_LargestVlaueInCurrentFrame;
-u8 Global_SmallestVlaueInCurrentFrame;
+volatile u8 Global_PeakToPeakValueInCurrentFrame;
+volatile u8 Global_LargestVlaueInCurrentFrame;
+volatile u8 Global_SmallestVlaueInCurrentFrame;
 
 /*	This variable, along with the
  * "NUMBER_OF_SENT_QUARTERS_REQUIERED_FOR_INFO_UPDATE" defined in private.h,
  * determine how often and when info image is updated
  */
-u8 Global_NumberOfsentQuartersSinceLastInfoUpdate;
+volatile u8 Global_NumberOfsentQuartersSinceLastInfoUpdate;
 
 /*	state of enter button	*/
-b8 Global_Enter;
+volatile b8 Global_Enter;
 
 /*	current resolution values	*/
-u32 Global_CurrentMicroVoltsPerPix;
-u32 Global_CurrentMicroSecondsPerPix;
-u8 Global_CurrentUsedAdcChannelIndex;
+volatile u32 Global_CurrentMicroVoltsPerPix;
+volatile u32 Global_CurrentMicroSecondsPerPix;
+volatile u8 Global_CurrentUsedAdcChannelIndex;
 
 /*	current running state of the machine	*/
-OSC_RunningState_t Global_RunningState;
+volatile OSC_RunningState_t Global_RunningState;
 
 /*	pausing of display	*/
-b8 Global_Paused;
+volatile b8 Global_Paused;
+
+extern void OSC_voidRefreshQuarterOfTheDisplay(void);
 
 void OSC_voidStartSignalDrawing(void)
 {
-	/*	start drawing	*/
-	(void)TIM_u64InitTimTrigger(
-		LCD_REFRESH_TRIGGER_TIMER_UNIT_NUMBER, 100000ul,
-		100000ul * 2, OSC_voidTimRefreshQuarterCallback);
+//	/*	start drawing	*/
+//	(void)TIM_u64InitTimTrigger(
+//		LCD_REFRESH_TRIGGER_TIMER_UNIT_NUMBER, 100000ul,
+//		100000ul * 2, OSC_voidRefreshQuarterOfTheDisplay);
 }

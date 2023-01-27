@@ -22,7 +22,7 @@ typedef enum{
 	OSC_RunningState_Preparing1stQuarter,
 	OSC_RunningState_Preparing2ndQuarter,
 	OSC_RunningState_Preparing3rdQuarter,
-	OSC_RunningState_Preparing4ndQuarter, // i.e.: info quarter
+	OSC_RunningState_Preparing4thQuarter, // i.e.: info quarter
 }OSC_RunningState_t;
 
 /*
@@ -41,6 +41,14 @@ void OSC_voidStartSignalDrawing(void);
 #define PIXELS_PER_VOLTAGE_DIV								16
 
 #define PIXELS_PER_TIME_DIV									15
+
+/*
+ * DMA1 channels used in mem to mem operations
+ * (for drawing a single line of the display
+ */
+#define FIRST_LINE_SEGMENT_DMA_CHANNEL						DMA_ChannelNumber_1
+#define SECOND_LINE_SEGMENT_DMA_CHANNEL						DMA_ChannelNumber_2
+#define THIRD_LINE_SEGMENT_DMA_CHANNEL						DMA_ChannelNumber_4
 
 #endif /* INCLUDE_APP_OSCILLOSCOPE_PRIVATE_H_ */
 

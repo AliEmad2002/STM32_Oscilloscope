@@ -9,7 +9,7 @@
 #define INCLUDE_APP_INIT_OSCILLOSCOPE_INIT_APP_H_
 
 
-void OSC_voidInitApp(void);
+void OSC_voidInitAPP(void);
 
 
 #endif /* INCLUDE_APP_INIT_OSCILLOSCOPE_INIT_APP_H_ */

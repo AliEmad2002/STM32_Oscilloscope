@@ -35,12 +35,7 @@
 
 /**	extern buttons callback functions	*/
 extern void OSC_voidTrigPauseResume(void);
-extern void OSC_voidOpenMenu(void);
-extern void OSC_voidAutoCalibVoltAndTimePerDiv(void);
-
-/*	extern needed global variables	*/
-extern NVIC_Interrupt_t tftDmaInterruptNumber;
-extern NVIC_Interrupt_t timTrigLineDrawingInterrupt;
+extern void OSC_voidAutoCalibrate(void);
 
 void OSC_InitRCC(void)
 {
@@ -70,19 +65,27 @@ void OSC_InitSysTick(void)
 void OSC_InitGPIO(void)
 {
 	/**	Init digital outputs	**/
-	/*	indecator LED pin	*/
+	/*	Indicator LED pin	*/
 	GPIO_voidSetPinGpoPushPull(LED_INDICATOR_PIN / 16, LED_INDICATOR_PIN % 16);
 
 	/**	Init digital inputs	**/
 	/*	auto button pin	*/
-	GPIO_voidSetPinInputPullDown(BUTTON_AUTO_PIN / 16, BUTTON_AUTO_PIN % 16);
-
-	/*	menu button pin	*/
-	GPIO_voidSetPinInputPullDown(BUTTON_MENU_PIN / 16, BUTTON_MENU_PIN % 16);
+	GPIO_voidSetPinInputPullDown(
+		BUTTON_AUTO_ENTER_PIN / 16, BUTTON_AUTO_ENTER_PIN % 16);
 
 	/*	pause / resume button pin	*/
 	GPIO_voidSetPinInputPullDown(
 		BUTTON_PAUSE_RESUME_PIN / 16, BUTTON_PAUSE_RESUME_PIN % 16);
+
+	/*	menu button pin	*/
+	GPIO_voidSetPinInputPullDown(
+		BUTTON_CURSOR_MENU_PIN / 16, BUTTON_CURSOR_MENU_PIN % 16);
+
+	/*	up(+) button pin	*/
+	GPIO_voidSetPinInputPullDown(BUTTON_UP_PIN / 16, BUTTON_UP_PIN % 16);
+
+	/*	down(-) button pin	*/
+	GPIO_voidSetPinInputPullDown(BUTTON_DOWN_PIN / 16, BUTTON_DOWN_PIN % 16);
 
 	/**	Init analog inputs	**/
 	/*	init all (oscilloscope channel 1)'s ADC channels	*/
@@ -103,16 +106,17 @@ void OSC_InitGPIO(void)
 void OSC_InitEXTI(void)
 {
 	/*	auto button	*/
-	EXTI_voidMapLine(BUTTON_AUTO_PIN % 16, BUTTON_AUTO_PIN / 16);
+	EXTI_voidMapLine(BUTTON_AUTO_ENTER_PIN % 16, BUTTON_AUTO_ENTER_PIN / 16);
 
-	EXTI_voidSetTriggeringEdge(BUTTON_AUTO_PIN % 16, EXTI_Trigger_risingEdge);
+	EXTI_voidSetTriggeringEdge(
+		BUTTON_AUTO_ENTER_PIN % 16, EXTI_Trigger_risingEdge);
 
 	EXTI_voidSetCallBack(
-		BUTTON_AUTO_PIN % 16, OSC_voidAutoCalibVoltAndTimePerDiv);
+		BUTTON_AUTO_ENTER_PIN % 16, OSC_voidAutoCalibrate);
 
-	EXTI_voidEnableLine(BUTTON_AUTO_PIN % 16);
+	EXTI_voidEnableLine(BUTTON_AUTO_ENTER_PIN % 16);
 
-	EXTI_voidEnableLineInterrupt(BUTTON_AUTO_PIN % 16);
+	EXTI_voidEnableLineInterrupt(BUTTON_AUTO_ENTER_PIN % 16);
 
 	/*	pause / resume button	*/
 	EXTI_voidMapLine(
@@ -121,25 +125,25 @@ void OSC_InitEXTI(void)
 	EXTI_voidSetTriggeringEdge(
 		BUTTON_PAUSE_RESUME_PIN % 16, EXTI_Trigger_risingEdge);
 
-	EXTI_voidSetCallBack(BUTTON_AUTO_PIN % 16, OSC_voidTrigPauseResume);
+	EXTI_voidSetCallBack(BUTTON_PAUSE_RESUME_PIN % 16, OSC_voidTrigPauseResume);
 
 	EXTI_voidEnableLine(BUTTON_PAUSE_RESUME_PIN % 16);
 
 	EXTI_voidEnableLineInterrupt(BUTTON_PAUSE_RESUME_PIN % 16);
 
 	/*	menu button	*/
-	EXTI_voidMapLine(BUTTON_MENU_PIN % 16, BUTTON_MENU_PIN / 16);
+	EXTI_voidMapLine(BUTTON_CURSOR_MENU_PIN % 16, BUTTON_CURSOR_MENU_PIN / 16);
 
-	EXTI_voidSetTriggeringEdge(BUTTON_MENU_PIN % 16, EXTI_Trigger_risingEdge);
+	EXTI_voidSetTriggeringEdge(
+		BUTTON_CURSOR_MENU_PIN % 16, EXTI_Trigger_risingEdge);
 
 	EXTI_voidSetCallBack(
-			BUTTON_MENU_PIN % 16, OSC_voidOpenMenu);
+		BUTTON_CURSOR_MENU_PIN % 16, NULL);//OSC_voidOpenMenu); TODO
 
-	EXTI_voidEnableLine(BUTTON_MENU_PIN % 16);
+	//EXTI_voidEnableLine(BUTTON_CURSOR_MENU_PIN % 16);
 
-	EXTI_voidEnableLineInterrupt(BUTTON_MENU_PIN % 16);
+	//EXTI_voidEnableLineInterrupt(BUTTON_CURSOR_MENU_PIN % 16);
 }
-
 
 void OSC_InitADC(void)
 {
@@ -212,6 +216,47 @@ void OSC_InitTIM(void)
 		FREQ_MEASURE_MIN_FREQ_MILLI_HZ);
 }
 
+void OSC_InitDMA(void)
+{
+	/**
+	 *	Init the 3 channels used in filling a single line in the display.
+	 *	(mem to mem operations)
+	 **/
+
+	/*	enable DMA1 clock (if not enabled)	*/
+	DMA_voidEnableRCCClock(DMA_UnitNumber_1);
+
+	const DMA_ChannelNumber_t dmaChannels[] = {
+		FIRST_LINE_SEGMENT_DMA_CHANNEL,
+		SECOND_LINE_SEGMENT_DMA_CHANNEL,
+		THIRD_LINE_SEGMENT_DMA_CHANNEL
+	};
+
+	for (u8 i = 0; i < 3; i++)
+	{
+		/*	Source size is 16-bit	*/
+		DMA_voidSelectPeripheralSize(
+			DMA_UnitNumber_1, dmaChannels[i], DMA_Size_16bits);
+
+		/*	Destination size is 16-bit	*/
+		DMA_voidSelectMemorySize(
+			DMA_UnitNumber_1, dmaChannels[i], DMA_Size_16bits);
+
+		/*
+		 * set direction to read peripheral
+		 * (i.e.: the memory location of color data)
+		 */
+		DMA_voidSelectDataTransferDirection(
+			DMA_UnitNumber_1, dmaChannels[i], DMA_Direction_ReadPeripheral);
+
+		/*	Enable memory increment	*/
+		DMA_voidEnableMemoryIncrement(DMA_UnitNumber_1, dmaChannels[i]);
+
+		/*	Enable mem to mem mode	*/
+		DMA_voidEnableMemToMemMode(DMA_UnitNumber_1, dmaChannels[i]);
+	}
+}
+
 void OSC_InitSCB(void)
 {
 	/**
@@ -230,33 +275,33 @@ void OSC_InitSCB(void)
 
 void OSC_InitNVIC(void)
 {
-	timTrigLineDrawingInterrupt =
-			TIM_u8GetUpdateEventInterruptNumber(
-				LCD_REFRESH_TRIGGER_TIMER_UNIT_NUMBER);
-
-	NVIC_Interrupt_t timTrigInfoDrawingInterrupt =
-			TIM_u8GetUpdateEventInterruptNumber(
-				LCD_INFO_DRAWING_TRIGGER_TIMER_UNIT_NUMBER);
-
-	tftDmaInterruptNumber = DMA_u8GetInterruptVectorIndex(
-		DMA_UnitNumber_1,
-		(LCD_SPI_UNIT_NUMBER == SPI_UnitNumber_1 ?
-			DMA_ChannelNumber_3 : DMA_ChannelNumber_5));
-
-	NVIC_voidEnableInterrupt(timTrigLineDrawingInterrupt);
-	NVIC_voidEnableInterrupt(timTrigInfoDrawingInterrupt);
-
-	/**
-	 * see comments in "OSC_InitSCB()"
-	 */
-	/*NVIC_voidSetInterruptPriority(
-		tftDmaInterruptNumber, 0, 0);
-
-	NVIC_voidSetInterruptPriority(
-		timTrigLineDrawingInterrupt, 1, 0);
-
-	NVIC_voidSetInterruptPriority(
-		timTrigInfoDrawingInterrupt, 1, 0);*/
+//	timTrigLineDrawingInterrupt =
+//			TIM_u8GetUpdateEventInterruptNumber(
+//				LCD_REFRESH_TRIGGER_TIMER_UNIT_NUMBER);
+//
+//	NVIC_Interrupt_t timTrigInfoDrawingInterrupt =
+//			TIM_u8GetUpdateEventInterruptNumber(
+//				LCD_INFO_DRAWING_TRIGGER_TIMER_UNIT_NUMBER);
+//
+//	tftDmaInterruptNumber = DMA_u8GetInterruptVectorIndex(
+//		DMA_UnitNumber_1,
+//		(LCD_SPI_UNIT_NUMBER == SPI_UnitNumber_1 ?
+//			DMA_ChannelNumber_3 : DMA_ChannelNumber_5));
+//
+//	NVIC_voidEnableInterrupt(timTrigLineDrawingInterrupt);
+//	NVIC_voidEnableInterrupt(timTrigInfoDrawingInterrupt);
+//
+//	/**
+//	 * see comments in "OSC_InitSCB()"
+//	 */
+//	/*NVIC_voidSetInterruptPriority(
+//		tftDmaInterruptNumber, 0, 0);
+//
+//	NVIC_voidSetInterruptPriority(
+//		timTrigLineDrawingInterrupt, 1, 0);
+//
+//	NVIC_voidSetInterruptPriority(
+//		timTrigInfoDrawingInterrupt, 1, 0);*/
 }
 
 void OSC_voidInitMCAL(void)
@@ -272,6 +317,8 @@ void OSC_voidInitMCAL(void)
 	OSC_InitADC();
 
 	OSC_InitTIM();
+
+	OSC_InitDMA();
 
 	OSC_InitSCB();
 

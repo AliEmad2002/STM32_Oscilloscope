@@ -11,10 +11,10 @@
 /*******************************************************************************
  * LCD
  ******************************************************************************/
-#define LCD_A0_PIN									GPIO_Pin_B15
-#define LCD_RST_PIN									GPIO_Pin_A1
+#define LCD_A0_PIN									GPIO_Pin_A8
+#define LCD_RST_PIN									GPIO_Pin_A10
 
-#define LCD_SPI_UNIT_NUMBER							SPI_UnitNumber_1
+#define LCD_SPI_UNIT_NUMBER							SPI_UnitNumber_2
 #define LCD_SPI_AFIO_MAP							0
 
 #define LCD_BRIGHTNESS_CONTROL_TIMER_UNIT_NUMBER	4
@@ -52,9 +52,11 @@
  * 	- one can't set button1 to pin A1 and button2 to pin B1 or C1.
  * 	- one can set button1 to pin A1 and button2 to any pin except B1 and C1.
  */
-#define BUTTON_AUTO_PIN								GPIO_Pin_B13
+#define BUTTON_AUTO_ENTER_PIN						GPIO_Pin_A9
 #define BUTTON_PAUSE_RESUME_PIN						GPIO_Pin_B12
-#define BUTTON_MENU_PIN								GPIO_Pin_B10
+#define BUTTON_CURSOR_MENU_PIN						GPIO_Pin_B10
+#define BUTTON_UP_PIN								GPIO_Pin_B0
+#define BUTTON_DOWN_PIN								GPIO_Pin_B1
 
 /*******************************************************************************
  * Analog channels and ADC configuration

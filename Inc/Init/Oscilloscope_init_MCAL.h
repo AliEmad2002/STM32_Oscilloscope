@@ -21,6 +21,8 @@ void OSC_InitADC(void);
 
 void OSC_InitTIM(void);
 
+void OSC_InitDMA(void);
+
 void OSC_InitSCB(void);
 
 void OSC_InitNVIC(void);

@@ -36,36 +36,36 @@
 
 extern void OSC_voidDMATransferCompleteCallback(void);
 
-extern TFT2_t OSC_LCD;
+extern TFT2_t Global_LCD;
 
 void OSC_voidInitTFT(void)
 {
 	TFT2_voidInit(
-		&OSC_LCD, LCD_SPI_UNIT_NUMBER, LCD_SPI_AFIO_MAP, LCD_RST_PIN, LCD_A0_PIN,
+		&Global_LCD, LCD_SPI_UNIT_NUMBER, LCD_SPI_AFIO_MAP, LCD_RST_PIN, LCD_A0_PIN,
 		LCD_BRIGHTNESS_CONTROL_TIMER_UNIT_NUMBER,
 		LCD_BRIGHTNESS_CONTROL_TIMER_CHANNEL,
 		LCD_BRIGHTNESS_CONTROL_TIMER_AFIO_MAP);
 
 	/*	set maximum brightness by default	*/
-	TFT2_voidSetBrightness(&OSC_LCD, POW_TWO(16) - 1);
+	TFT2_voidSetBrightness(&Global_LCD, POW_TWO(16) - 1);
 }
 
 void OSC_voidDisplayStartupScreeen(void)
 {
 	/*	set bounds	*/
-	TFT2_SET_X_BOUNDARIES(&OSC_LCD, 0, 127);
-	TFT2_SET_Y_BOUNDARIES(&OSC_LCD, 0, 159);
+	TFT2_SET_X_BOUNDARIES(&Global_LCD, 0, 127);
+	TFT2_SET_Y_BOUNDARIES(&Global_LCD, 0, 159);
 
 	/*	start data write operation	*/
-	TFT2_WRITE_CMD(&OSC_LCD, TFT_CMD_MEM_WRITE);
+	TFT2_WRITE_CMD(&Global_LCD, TFT_CMD_MEM_WRITE);
 
-	TFT2_ENTER_DATA_MODE(&OSC_LCD);
+	TFT2_ENTER_DATA_MODE(&Global_LCD);
 
 	/*	DMA send	*/
-	TFT2_voidFillDMA(&OSC_LCD, &colorBlackU8Val, 128 * 160);
+	TFT2_voidFillDMA(&Global_LCD, &colorBlackU8Val, 128 * 160);
 
 	/*	wait for DMA to get done and clear flags	*/
-	TFT2_voidWaitCurrentDataTransfer(&OSC_LCD);
+	TFT2_voidWaitCurrentDataTransfer(&Global_LCD);
 
 	/*	give user time to see startup screen	*/
 	Delay_voidBlockingDelayMs(LCD_STARTUP_SCREEN_DELAY_MS);
@@ -73,11 +73,11 @@ void OSC_voidDisplayStartupScreeen(void)
 
 void OSC_voidInitSignalDrawing(void)
 {
-	/*	enable interrupt (to be used for less drawing overhead)	*/
-	TFT2_voidSetDMATransferCompleteCallback(
-		&OSC_LCD, OSC_voidDMATransferCompleteCallback);
-
-	TFT2_voidEnableDMATransferCompleteInterrupt(&OSC_LCD);
+//	/*	enable interrupt (to be used for less drawing overhead)	*/
+//	TFT2_voidSetDMATransferCompleteCallback(
+//		&Global_LCD, OSC_voidDMATransferCompleteCallback);
+//
+//	TFT2_voidEnableDMATransferCompleteInterrupt(&Global_LCD);
 }
 
 void OSC_voidInitInfoDrawing(void)
@@ -89,7 +89,7 @@ void OSC_voidInitInfoDrawing(void)
 	 *
 	 * The split can be cancelled from settings.
 	 */
-	TFT2_voidInitScroll(&OSC_LCD, 0, 130, 32);
+	TFT2_voidInitScroll(&Global_LCD, 0, 130, 32);
 }
 
 void OSC_voidInitHAL(void)
