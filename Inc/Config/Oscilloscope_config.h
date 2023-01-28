@@ -11,7 +11,7 @@
 /*******************************************************************************
  * LCD
  ******************************************************************************/
-#define LCD_A0_PIN									GPIO_Pin_A8
+#define LCD_A0_PIN									GPIO_Pin_A11
 #define LCD_RST_PIN									GPIO_Pin_A10
 
 #define LCD_SPI_UNIT_NUMBER							SPI_UnitNumber_2
@@ -20,20 +20,20 @@
 #define LCD_BRIGHTNESS_CONTROL_TIMER_UNIT_NUMBER	4
 #define LCD_BRIGHTNESS_CONTROL_TIMER_CHANNEL		TIM_Channel_4
 #define LCD_BRIGHTNESS_CONTROL_TIMER_AFIO_MAP		0
-#define LCD_BRIGHTNESS_CONTROL_TIMER_FREQ_HZ		100
-
-#define LCD_REFRESH_TRIGGER_TIMER_UNIT_NUMBER		1
-
-#define LCD_INFO_DRAWING_TRIGGER_TIMER_UNIT_NUMBER	3
-#define LCD_INFO_DRAWING_TRIGGER_FREQUENCY_MILLI_HZ	2000	// once every 0.5 second
 
 #define LCD_STARTUP_SCREEN_DELAY_MS					0
+
+#define INFO_DRAWING_PERIODIC_TIME_MS				1000ul
 
 #define LCD_BACKGROUND_COLOR_U8						colorBlackU8Val
 
 #define LCD_BACKGROUND_COLOR_U16					(colorBlack.code565)
 
 #define LCD_MAIN_DRAWING_COLOR_U16					(colorWhite.code565)
+
+#define LCD_CURSOR1_DRAWING_COLOR_U16				(colorRed.code565)
+
+#define LCD_CURSOR2_DRAWING_COLOR_U16				(colorYellow.code565)
 
 //#define LCD_MENU_FONT_SIZE							1
 
@@ -57,6 +57,8 @@
 #define BUTTON_CURSOR_MENU_PIN						GPIO_Pin_B10
 #define BUTTON_UP_PIN								GPIO_Pin_B0
 #define BUTTON_DOWN_PIN								GPIO_Pin_B1
+
+#define BUTTON_DEBOUNCING_TIME_MS					250ul
 
 /*******************************************************************************
  * Analog channels and ADC configuration
@@ -106,9 +108,7 @@ static const OSC_Config_ADC_Channel
  ******************************************************************************/
 #define FREQ_MEASURE_TIMER_UNIT_NUMBER				2
 #define FREQ_MEASURE_TIMER_UNIT_AFIO_MAP			1
-#define FREQ_MEASURE_MIN_FREQ_MILLI_HZ				100
-
-
+#define FREQ_MEASURE_MIN_FREQ_MILLI_HZ				1000
 
 #endif /* OSCILLOSCOPE_CONFIG_H_ */
 

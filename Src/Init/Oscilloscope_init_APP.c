@@ -38,11 +38,14 @@ extern void OSC_voidAutoCalibrate(void);
 
 void OSC_voidInitAPP(void)
 {
+	/*
+	 * as calling "OSC_voidAutoCalibrate()" at the first few microseconds of
+	 * the MCU program returns without setting any thing, wait before calling.
+	 */
+	Delay_voidBlockingDelayMs(500);
+
 	/*	Auto calibrate voltage per div, voltage gain and time per div	*/
 	OSC_voidAutoCalibrate();
-
-	/*	start display refresh trigger	*/
-	OSC_voidStartSignalDrawing();
 }
 
 

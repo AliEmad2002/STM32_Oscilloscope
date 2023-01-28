@@ -36,6 +36,9 @@
 /**	extern buttons callback functions	*/
 extern void OSC_voidTrigPauseResume(void);
 extern void OSC_voidAutoCalibrate(void);
+extern void OSC_voidOpenMainMenu(void);
+extern void OSC_voidUpButtonCallBack(void);
+extern void OSC_voidDownButtonCallBack(void);
 
 void OSC_InitRCC(void)
 {
@@ -138,11 +141,37 @@ void OSC_InitEXTI(void)
 		BUTTON_CURSOR_MENU_PIN % 16, EXTI_Trigger_risingEdge);
 
 	EXTI_voidSetCallBack(
-		BUTTON_CURSOR_MENU_PIN % 16, NULL);//OSC_voidOpenMenu); TODO
+		BUTTON_CURSOR_MENU_PIN % 16, OSC_voidOpenMainMenu);
 
-	//EXTI_voidEnableLine(BUTTON_CURSOR_MENU_PIN % 16);
+	EXTI_voidEnableLine(BUTTON_CURSOR_MENU_PIN % 16);
 
-	//EXTI_voidEnableLineInterrupt(BUTTON_CURSOR_MENU_PIN % 16);
+	EXTI_voidEnableLineInterrupt(BUTTON_CURSOR_MENU_PIN % 16);
+
+	/*	up button	*/
+	EXTI_voidMapLine(BUTTON_UP_PIN % 16, BUTTON_UP_PIN / 16);
+
+	EXTI_voidSetTriggeringEdge(
+			BUTTON_UP_PIN % 16, EXTI_Trigger_risingEdge);
+
+	EXTI_voidSetCallBack(
+			BUTTON_UP_PIN % 16, OSC_voidUpButtonCallBack);
+
+	EXTI_voidEnableLine(BUTTON_UP_PIN % 16);
+
+	EXTI_voidEnableLineInterrupt(BUTTON_UP_PIN % 16);
+
+	/*	down button	*/
+	EXTI_voidMapLine(BUTTON_DOWN_PIN % 16, BUTTON_DOWN_PIN / 16);
+
+	EXTI_voidSetTriggeringEdge(
+			BUTTON_DOWN_PIN % 16, EXTI_Trigger_risingEdge);
+
+	EXTI_voidSetCallBack(
+			BUTTON_DOWN_PIN % 16, OSC_voidDownButtonCallBack);
+
+	EXTI_voidEnableLine(BUTTON_DOWN_PIN % 16);
+
+	EXTI_voidEnableLineInterrupt(BUTTON_DOWN_PIN % 16);
 }
 
 void OSC_InitADC(void)

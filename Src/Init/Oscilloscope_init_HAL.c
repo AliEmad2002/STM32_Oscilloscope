@@ -47,7 +47,7 @@ void OSC_voidInitTFT(void)
 		LCD_BRIGHTNESS_CONTROL_TIMER_AFIO_MAP);
 
 	/*	set maximum brightness by default	*/
-	TFT2_voidSetBrightness(&Global_LCD, POW_TWO(16) - 1);
+	TFT2_voidSetBrightness(&Global_LCD, POW_TWO(15) - 1);
 }
 
 void OSC_voidDisplayStartupScreeen(void)

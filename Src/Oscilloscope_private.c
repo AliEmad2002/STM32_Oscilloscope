@@ -33,23 +33,6 @@
 /*	TFT LCD object	*/
 volatile TFT2_t Global_LCD;
 
-/*	binary semaphore for LCD interfacing line	*/
-volatile b8 Global_LCDIsUnderUsage;
-
-/*	array of pixels in which 1/4 of the full display is stored	*/
-//u16 Global_QuarterOfTheDisplay[40][128];
-
-/*
- * flag that tells if the previous array is done being prepared and ready to be
- * sent. Used in debugging and making sure that refresh rate is not much faster
- * that processing pixels.
- */
-volatile b8 Global_IsPixArrReady;
-
-/*	NVIC indexes	*/
-volatile NVIC_Interrupt_t Global_LCDDmaInterruptNumber;
-volatile NVIC_Interrupt_t Global_RefreshQuarterOfTheDisplayTimerInterruptNumber;
-
 /*
  * Peak to peak value in a single frame.
  * Is calculated as the difference between the largest and smallest values in
@@ -62,32 +45,17 @@ volatile u8 Global_PeakToPeakValueInCurrentFrame;
 volatile u8 Global_LargestVlaueInCurrentFrame;
 volatile u8 Global_SmallestVlaueInCurrentFrame;
 
-/*	This variable, along with the
- * "NUMBER_OF_SENT_QUARTERS_REQUIERED_FOR_INFO_UPDATE" defined in private.h,
- * determine how often and when info image is updated
- */
-volatile u8 Global_NumberOfsentQuartersSinceLastInfoUpdate;
-
-/*	state of enter button	*/
-volatile b8 Global_Enter;
-
 /*	current resolution values	*/
 volatile u32 Global_CurrentMicroVoltsPerPix;
-volatile u32 Global_CurrentMicroSecondsPerPix;
+volatile u64 Global_CurrentNanoSecondsPerPix;
 volatile u8 Global_CurrentUsedAdcChannelIndex;
-
-/*	current running state of the machine	*/
-volatile OSC_RunningState_t Global_RunningState;
 
 /*	pausing of display	*/
 volatile b8 Global_Paused;
 
-extern void OSC_voidRefreshQuarterOfTheDisplay(void);
+volatile u64 Global_LastMeasuredFreq;
 
-void OSC_voidStartSignalDrawing(void)
-{
-//	/*	start drawing	*/
-//	(void)TIM_u64InitTimTrigger(
-//		LCD_REFRESH_TRIGGER_TIMER_UNIT_NUMBER, 100000ul,
-//		100000ul * 2, OSC_voidRefreshQuarterOfTheDisplay);
-}
+volatile OSC_Up_Down_Target_t Global_UpDownTarget;
+
+volatile b8 Global_ReturnedFromMenu;
+

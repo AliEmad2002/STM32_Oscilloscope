@@ -31,41 +31,43 @@
 /*	SELF	*/
 #include "Oscilloscope_config.h"
 #include "Oscilloscope_Private.h"
+#include "Oscilloscope_Cursor.h"
 #include "Oscilloscope_init_Global.h"
 
 /*******************************************************************************
  * Extern global variables (from private.c file):
  ******************************************************************************/
-extern b8 Global_LCDIsUnderUsage;
-extern b8 Global_IsPixArrReady;;
 extern u8 Global_PeakToPeakValueInCurrentFrame;
 extern u8 Global_LargestVlaueInCurrentFrame;
 extern u8 Global_SmallestVlaueInCurrentFrame;
-extern u8 Global_NumberOfsentQuartersSinceLastInfoUpdate;
-extern b8 Global_Enter;
-extern OSC_RunningState_t Global_RunningState;
 extern b8 Global_Paused;
+extern volatile OSC_Up_Down_Target_t Global_UpDownTarget;
+extern volatile b8 Global_ReturnedFromMenu;
+
+extern volatile OSC_Cursor_t Cursor_v1;
+extern volatile OSC_Cursor_t Cursor_v2;
+extern volatile OSC_Cursor_t Cursor_t1;
+extern volatile OSC_Cursor_t Cursor_t2;
 
 /*******************************************************************************
  * Function declaration:
  ******************************************************************************/
 void OSC_voidInitGlobal(void)
 {
-	Global_LCDIsUnderUsage = false;
-
 	Global_PeakToPeakValueInCurrentFrame = 0;
 	Global_LargestVlaueInCurrentFrame = 0;
 	Global_SmallestVlaueInCurrentFrame = 0;
 
-	Global_NumberOfsentQuartersSinceLastInfoUpdate = 0;
-
-	Global_Enter = false;
-
-	Global_IsPixArrReady = false;
-
-	Global_RunningState = OSC_RunningState_Preparing1stQuarter;
-
 	Global_Paused = false;
+
+	Global_UpDownTarget = OSC_Up_Down_Target_ChangeVoltageDiv;
+
+	Global_ReturnedFromMenu = true;
+
+	Cursor_v1 = (OSC_Cursor_t){0, false};
+	Cursor_v2 = (OSC_Cursor_t){0, false};
+	Cursor_t1 = (OSC_Cursor_t){0, false};
+	Cursor_t2 = (OSC_Cursor_t){0, false};
 }
 
 

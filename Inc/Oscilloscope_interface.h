@@ -12,6 +12,8 @@
 /*******************************************************************************
  * Init functions:
  ******************************************************************************/
+extern void OSC_voidInitGlobal(void);
+
 /*
  * Inits all (MCAL) hardware resources configured in "Oscilloscope_configh.h"
  * file.
@@ -24,7 +26,7 @@ extern void OSC_voidInitMCAL(void);
  */
 extern void OSC_voidInitHAL(void);
 
-extern void OSC_voidInitApp(void);
+extern void OSC_voidInitAPP(void);
 
 /*******************************************************************************
  * Mode switching:
@@ -48,8 +50,9 @@ void OSC_voidTrigPauseResume(void);
 /*	main super loop (no OS version)	*/
 void OSC_voidMainSuperLoop(void);
 
-/*	prepares info image that is to be displayed on the info section	*/
-void OSC_voidPrepareInfoPixArray(void);
+void OSC_voidGetInfoStr(char* str);
+
+void OSC_voidDrawInfoOnPixArray(u16* pixArr);
 
 /*
  * auto calibrates volts per div and time per div to properly

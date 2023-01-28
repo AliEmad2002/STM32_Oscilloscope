@@ -14,32 +14,8 @@
 #define ADC_1_CHANNEL		(ANALOG_INPUT_1_PIN % 16)
 #define ADC_2_CHANNEL		(ANALOG_INPUT_2_PIN % 16)
 
-/*	constant values based on experimental tests	*/
-static const u64 lineDrawingRatemHzMax = 8000000;
-
-
-typedef enum{
-	OSC_RunningState_Preparing1stQuarter,
-	OSC_RunningState_Preparing2ndQuarter,
-	OSC_RunningState_Preparing3rdQuarter,
-	OSC_RunningState_Preparing4thQuarter, // i.e.: info quarter
-}OSC_RunningState_t;
-
-/*
- * This function enables the periodic event (every 10ms) of sending the proper
- * 1/4 of the display.
- */
-void OSC_voidStartSignalDrawing(void);
-
-/*	This definition, along with the
- * "Global_NumberOfsentQuartersSinceLastInfoUpdate" defined in private.c,
- * determine how often and when info image is updated
- */
-#define NUMBER_OF_SENT_QUARTERS_REQUIERED_FOR_INFO_UPDATE	100
-
 /*	pixels per div	*/
 #define PIXELS_PER_VOLTAGE_DIV								16
-
 #define PIXELS_PER_TIME_DIV									15
 
 /*
@@ -50,5 +26,39 @@ void OSC_voidStartSignalDrawing(void);
 #define SECOND_LINE_SEGMENT_DMA_CHANNEL						DMA_ChannelNumber_2
 #define THIRD_LINE_SEGMENT_DMA_CHANNEL						DMA_ChannelNumber_4
 
+/*
+ * The current target to be effected by the up and down buttons
+ */
+typedef enum{
+	OSC_Up_Down_Target_ChangeVoltageDiv,
+	OSC_Up_Down_Target_ChangeTimeDiv,
+	OSC_Up_Down_Target_ChangeVoltageCursor1Position,
+	OSC_Up_Down_Target_ChangeVoltageCursor2Position,
+	OSC_Up_Down_Target_ChangeTimeCursor1Position,
+	OSC_Up_Down_Target_ChangeTimeCursor2Position,
+}OSC_Up_Down_Target_t;
+
+/*
+ * Notice that:
+ * ("DASHED_LINE_DRAWN_SEGMENT_LEN" + "DASHED_LINE_BLANK_SEGMENT_LEN") must be
+ * dividable by "LINES_PER_IMAGE_BUFFER"
+ */
+
+#define LINES_PER_IMAGE_BUFFER								15
+
+/*	By test, this number better be dividable by 3	*/
+#define NUMBER_OF_IMAGE_BUFFERS_PER_FRAME					9
+
+#define NUMBER_OF_SAMPLES	\
+	(LINES_PER_IMAGE_BUFFER * NUMBER_OF_IMAGE_BUFFERS_PER_FRAME)
+
+/*	length of drawn segment of a dashed line	*/
+#define DASHED_LINE_DRAWN_SEGMENT_LEN						3
+
+/*	length of blank segment of a dashed line	*/
+#define DASHED_LINE_BLANK_SEGMENT_LEN						2
+
+
 #endif /* INCLUDE_APP_OSCILLOSCOPE_PRIVATE_H_ */
+
 
