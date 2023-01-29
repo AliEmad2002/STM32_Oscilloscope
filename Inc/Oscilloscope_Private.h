@@ -36,6 +36,7 @@ typedef enum{
 	OSC_Up_Down_Target_ChangeVoltageCursor2Position,
 	OSC_Up_Down_Target_ChangeTimeCursor1Position,
 	OSC_Up_Down_Target_ChangeTimeCursor2Position,
+	OSC_Up_Down_Target_ChangeBrightness
 }OSC_Up_Down_Target_t;
 
 /*

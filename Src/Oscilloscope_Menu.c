@@ -216,6 +216,11 @@ void OSC_voidSelectChangeT2Position(void)
 	Global_UpDownTarget = OSC_Up_Down_Target_ChangeTimeCursor2Position;
 }
 
+void OSC_voidSelectChangeBrightness(void)
+{
+	Global_UpDownTarget = OSC_Up_Down_Target_ChangeBrightness;
+}
+
 
 
 

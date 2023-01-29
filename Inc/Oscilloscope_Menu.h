@@ -15,6 +15,7 @@ void OSC_voidSelectChangeV1Position(void);
 void OSC_voidSelectChangeV2Position(void);
 void OSC_voidSelectChangeT1Position(void);
 void OSC_voidSelectChangeT2Position(void);
+void OSC_voidSelectChangeBrightness(void);
 
 /*	enable / add cursor	*/
 extern void OSC_voidEnableCursorV1(void);
@@ -144,7 +145,7 @@ static Menu_t cursorMenu = {
 static Menu_t mainMenu = {
 	.currentSelected = 0,
 
-	.numberOfElements = 2,
+	.numberOfElements = 3,
 
 	.elementArr[0] = {
 		" Change division", Menu_ElementType_SubMenu, &changeDivMenu
@@ -152,6 +153,11 @@ static Menu_t mainMenu = {
 
 	.elementArr[1] = {
 		" Cursor", Menu_ElementType_SubMenu, &cursorMenu
+	},
+
+	.elementArr[2] = {
+		" Change brightness", Menu_ElementType_Callback,
+		OSC_voidSelectChangeBrightness
 	}
 };
 

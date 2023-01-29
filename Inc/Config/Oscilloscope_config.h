@@ -51,6 +51,8 @@
  * Examples:
  * 	- one can't set button1 to pin A1 and button2 to pin B1 or C1.
  * 	- one can set button1 to pin A1 and button2 to any pin except B1 and C1.
+ * Note: Do not use the line of the frequency measurement pin, as it is used
+ * by application!!
  */
 #define BUTTON_AUTO_ENTER_PIN						GPIO_Pin_A9
 #define BUTTON_PAUSE_RESUME_PIN						GPIO_Pin_B12
@@ -106,9 +108,9 @@ static const OSC_Config_ADC_Channel
 /*******************************************************************************
  * frequency measurement
  ******************************************************************************/
-#define FREQ_MEASURE_TIMER_UNIT_NUMBER				2
-#define FREQ_MEASURE_TIMER_UNIT_AFIO_MAP			1
-#define FREQ_MEASURE_MIN_FREQ_MILLI_HZ				1000
+#define FREQ_MEASURE_TIMER_UNIT_NUMBER				1
+#define FREQ_MEASURE_TIMER_UNIT_AFIO_MAP			0
+#define FREQ_MEASURE_MIN_FREQ_MILLI_HZ				100000
 
 #endif /* OSCILLOSCOPE_CONFIG_H_ */
 

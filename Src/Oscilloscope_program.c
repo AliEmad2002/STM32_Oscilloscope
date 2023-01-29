@@ -46,6 +46,8 @@
 /*******************************************************************************
  * Extern global variables (from private.c file):
  ******************************************************************************/
+extern volatile u32 stkTicksPerSecond;
+
 extern volatile TFT2_t Global_LCD;
 extern volatile u8 Global_PeakToPeakValueInCurrentFrame;
 extern volatile u8 Global_LargestVlaueInCurrentFrame;
@@ -113,6 +115,28 @@ void OSC_voidDecrementTimeDiv(void)
 
 }
 
+void OSC_voidIncrementBrightness(void)
+{
+	u32 brightness = TFT2_u16GetBrightness(&Global_LCD);
+
+	brightness += 1000;
+
+	if (brightness > POW_TWO(16) - 1)
+		brightness = POW_TWO(16) - 1;
+
+	TFT2_voidSetBrightness(&Global_LCD, brightness);
+}
+
+void OSC_voidDecrementBrightness(void)
+{
+	u16 brightness = TFT2_u16GetBrightness(&Global_LCD);
+
+	if (brightness > 3000)
+		brightness -= 1000;
+
+	TFT2_voidSetBrightness(&Global_LCD, brightness);
+}
+
 /*******************************************************************************
  * ISR's:
  ******************************************************************************/
@@ -130,11 +154,13 @@ void OSC_voidTrigPauseResume(void)
 	if (!Global_Paused)
 	{
 		Global_Paused = true;
+		GPIO_SET_PIN_HIGH(LED_INDICATOR_PIN / 16, LED_INDICATOR_PIN % 16);
 	}
 
 	else
 	{
 		Global_Paused = false;
+		GPIO_SET_PIN_LOW(LED_INDICATOR_PIN / 16, LED_INDICATOR_PIN % 16);
 	}
 
 	/*	debouncing timestamp	*/
@@ -143,6 +169,15 @@ void OSC_voidTrigPauseResume(void)
 
 void OSC_voidUpButtonCallBack(void)
 {
+	static u64 lastPressTime = 0;
+
+	if (
+		STK_u64GetElapsedTicks() - lastPressTime <
+		BUTTON_DEBOUNCING_TIME_MS * 72000ul)
+	{
+		return;
+	}
+
 	switch (Global_UpDownTarget)
 	{
 	case OSC_Up_Down_Target_ChangeVoltageDiv:
@@ -168,11 +203,27 @@ void OSC_voidUpButtonCallBack(void)
 	case OSC_Up_Down_Target_ChangeTimeCursor2Position:
 		OSC_voidIncrementCursorT2();
 		break;
+
+	case OSC_Up_Down_Target_ChangeBrightness:
+		OSC_voidIncrementBrightness();
+		break;
 	}
+
+	/*	debouncing timestamp	*/
+	lastPressTime = STK_u64GetElapsedTicks();
 }
 
 void OSC_voidDownButtonCallBack(void)
 {
+	static u64 lastPressTime = 0;
+
+	if (
+		STK_u64GetElapsedTicks() - lastPressTime <
+		BUTTON_DEBOUNCING_TIME_MS * 72000ul)
+	{
+		return;
+	}
+
 	switch (Global_UpDownTarget)
 	{
 	case OSC_Up_Down_Target_ChangeVoltageDiv:
@@ -198,11 +249,49 @@ void OSC_voidDownButtonCallBack(void)
 	case OSC_Up_Down_Target_ChangeTimeCursor2Position:
 		OSC_voidDecrementCursorT2();
 		break;
+
+	case OSC_Up_Down_Target_ChangeBrightness:
+		OSC_voidDecrementBrightness();
+		break;
 	}
+
+	/*	debouncing timestamp	*/
+	lastPressTime = STK_u64GetElapsedTicks();
 }
 /*******************************************************************************
  * Main thread functions:
  ******************************************************************************/
+void OSC_voidWaitForSignalRisingEdge(void)
+{
+	/*
+	 * if frequency measured was more than 10Hz, then wait for
+	 * a rising edge of the signal before starting sampling. This gives
+	 * a much nicer display because of syncing signal and display.
+	 *
+	 * Timeout: 0.1 second.
+	 */
+	u64 freqmHz = 0;
+	/*
+	 * if CC1IF was not raised before reading CCR1, then no transition have
+	 * not happened. i.e.: freq = 0
+	 */
+	if (TIM_GET_STATUS_FLAG(FREQ_MEASURE_TIMER_UNIT_NUMBER, TIM_Status_CC1))
+		freqmHz = TIM_u64GetFrequencyMeasured(FREQ_MEASURE_TIMER_UNIT_NUMBER);
+
+	if (freqmHz > 10000)
+	{
+		u64 startTime = STK_u64GetElapsedTicks();
+
+		while(!TIM_b8GetStatusFlag(1, TIM_Status_CC1))
+		{
+			if (STK_u64GetElapsedTicks() - startTime > stkTicksPerSecond / 10)
+				break;
+		}
+
+		TIM_voidClearStatusFlag(1, TIM_Status_CC1);
+	}
+}
+
 void OSC_voidMainSuperLoop(void)
 {
 	/*
@@ -224,11 +313,6 @@ void OSC_voidMainSuperLoop(void)
 
 	u8 currentSmaller;
 	u8 currentLarger;
-
-	/*	store STK ticks per second here
-	 * (to not use the function more than once)
-	 */
-	volatile u32 stkTicksPerSecond = STK_u32GetTicksPerSecond();
 
 	/*	last time info was drawn. (timestamp)	*/
 	u64 lastInfoDrawTime = STK_u64GetElapsedTicks();
@@ -281,66 +365,47 @@ void OSC_voidMainSuperLoop(void)
 			((u64)Global_CurrentNanoSecondsPerPix * stkTicksPerSecond) /
 			1000000000ul;
 
-		/*	if info drawing time has passed, draw it	*/
-		if (STK_u64GetElapsedTicks() - lastInfoDrawTime > infoDrawPeriod)
-		{
-//			/*	wait for transfer complete	*/
-//			TFT2_voidWaitCurrentDataTransfer(&Global_LCD);
-//
-//			OSC_voidDrawInfoOnPixArray(pixArr1);
-//
-//			/*	set screen boundaries for info image area	*/
-//			TFT2_SET_X_BOUNDARIES(&Global_LCD, 0, 127);
-//			TFT2_SET_Y_BOUNDARIES(&Global_LCD, 140, 159);
-//
-//			/*	start data writing mode on screen	*/
-//			TFT2_WRITE_CMD(&Global_LCD, TFT_CMD_MEM_WRITE);
-//			TFT2_ENTER_DATA_MODE(&Global_LCD);
-//
-//			/*	send info image	*/
-//			TFT2_voidSendPixels(&Global_LCD, (u16*)pixArr1, 20ul * 128ul);
-//
-//			/*	wait for transfer complete	*/
-//			TFT2_voidWaitCurrentDataTransfer(&Global_LCD);
-//
-//			/*	set screen boundaries for full signal image area	*/
-//			TFT2_SET_X_BOUNDARIES(&Global_LCD, 0, 127);
-//			TFT2_SET_Y_BOUNDARIES(&Global_LCD, 0, 139);
-//
-//			/*	start data writing mode on screen	*/
-//			TFT2_WRITE_CMD(&Global_LCD, TFT_CMD_MEM_WRITE);
-//			TFT2_ENTER_DATA_MODE(&Global_LCD);
-//
-//			lastInfoDrawTime = STK_u64GetElapsedTicks();
-		}
-
 		/*	take "NUMBER_OF_SAMPLES" samples with interval between each two of
 		 * them equal to: "Global_CurrentMicroSecondsPerPix".
 		 */
 		if (!Global_Paused)
 		{
-			/*
-			 * if frequency measured was more than 10Hz, then wait for
-			 * a rising edge of the signal before starting sampling. This gives
-			 * a much nicer display because of syncing signal and display.
-			 *
-			 * Timeout: 0.1 second.
-			 */
-			if (TIM_u64GetFrequencyMeasured(FREQ_MEASURE_TIMER_UNIT_NUMBER) > 10000)
+			/*	if info drawing time has passed, draw it	*/
+			if (STK_u64GetElapsedTicks() - lastInfoDrawTime > infoDrawPeriod)
 			{
-				u64 startTime = STK_u64GetElapsedTicks();
-				// TODO: make pin and port configurable.
-				while(GPIO_DIGITAL_READ(GPIO_PortName_A, 15) == GPIO_OutputLevel_High)
-				{
-					if (STK_u64GetElapsedTicks() - startTime > stkTicksPerSecond / 10)
-						break;
-				}
-				while(GPIO_DIGITAL_READ(GPIO_PortName_A, 15) == GPIO_OutputLevel_Low)
-				{
-					if (STK_u64GetElapsedTicks() - startTime > stkTicksPerSecond / 10)
-						break;
-				}
+				/*	wait for transfer complete	*/
+				TFT2_voidWaitCurrentDataTransfer(&Global_LCD);
+
+				OSC_voidDrawInfoOnPixArray(pixArr1);
+
+				/*	set screen boundaries for info image area	*/
+				TFT2_SET_X_BOUNDARIES(&Global_LCD, 0, 127);
+				TFT2_SET_Y_BOUNDARIES(&Global_LCD, NUMBER_OF_SAMPLES, 159);
+
+				/*	start data writing mode on screen	*/
+				TFT2_WRITE_CMD(&Global_LCD, TFT_CMD_MEM_WRITE);
+				TFT2_ENTER_DATA_MODE(&Global_LCD);
+
+				/*	send info image	*/
+				TFT2_voidSendPixels(
+					&Global_LCD, (u16*)pixArr1, LINES_PER_IMAGE_BUFFER * 128ul);
+
+				/*	wait for transfer complete	*/
+				TFT2_voidWaitCurrentDataTransfer(&Global_LCD);
+
+				/*	set screen boundaries for full signal image area	*/
+				TFT2_SET_X_BOUNDARIES(&Global_LCD, 0, 127);
+				TFT2_SET_Y_BOUNDARIES(&Global_LCD, 0, NUMBER_OF_SAMPLES - 1);
+
+				/*	start data writing mode on screen	*/
+				TFT2_WRITE_CMD(&Global_LCD, TFT_CMD_MEM_WRITE);
+				TFT2_ENTER_DATA_MODE(&Global_LCD);
+
+				lastInfoDrawTime = STK_u64GetElapsedTicks();
 			}
+
+			/*	sync on signal rising edge	*/
+			OSC_voidWaitForSignalRisingEdge();
 
 			for (u16 i = 0; i < NUMBER_OF_SAMPLES; i++)
 			{
@@ -545,7 +610,13 @@ void OSC_voidGetInfoStr(char* str)
 	 * read frequency value (this reading is based on the value of OC register
 	 * at time of reading).
 	 */
-	u64 freqmHz = TIM_u64GetFrequencyMeasured(FREQ_MEASURE_TIMER_UNIT_NUMBER);
+	u64 freqmHz = 0;
+	/*
+	 * if CC1IF was not raised before reading CCR1, then no transition have
+	 * not happened. i.e.: freq = 0
+	 */
+	if (TIM_GET_STATUS_FLAG(FREQ_MEASURE_TIMER_UNIT_NUMBER, TIM_Status_CC1))
+		freqmHz = TIM_u64GetFrequencyMeasured(FREQ_MEASURE_TIMER_UNIT_NUMBER);
 
 	/*	peak to peak voltage (in uV)	*/
 	u64 vPP =
@@ -612,7 +683,7 @@ void OSC_voidDrawInfoOnPixArray(u16* pixArr)
 	Txt_voidCpyStrToStaticPixArrNormalOrientation(
 			(u8*)str, colorRed.code565, colorBlack.code565, 1,
 			Txt_HorizontalMirroring_Disabled, Txt_VerticalMirroring_Disabled,
-			0, 0, 20, 128, pixArr);
+			0, 0, LINES_PER_IMAGE_BUFFER, 128, pixArr);
 }
 
 void OSC_voidAutoCalibrate(void)
@@ -628,7 +699,13 @@ void OSC_voidAutoCalibrate(void)
 
 	/** Time calibration	**/
 	/*	get signal frequency	*/
-	u64 freqmHz = TIM_u64GetFrequencyMeasured(FREQ_MEASURE_TIMER_UNIT_NUMBER);
+	u64 freqmHz = 0;
+	/*
+	 * if CC1IF was not raised before reading CCR1, then no transition have
+	 * not happened. i.e.: freq = 0
+	 */
+	if (TIM_GET_STATUS_FLAG(FREQ_MEASURE_TIMER_UNIT_NUMBER, TIM_Status_CC1))
+		freqmHz = TIM_u64GetFrequencyMeasured(FREQ_MEASURE_TIMER_UNIT_NUMBER);
 
 	/*
 	 * set time per pix such that user can see 3 periods of the signal in one

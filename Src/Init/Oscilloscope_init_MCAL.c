@@ -238,11 +238,20 @@ void OSC_InitADC(void)
 
 void OSC_InitTIM(void)
 {
+	u64 maxMeasurableFreqmHz;
 	/*	start frequency measurement	*/
 	TIM_voidInitFreqAndDutyMeasurement(
 		FREQ_MEASURE_TIMER_UNIT_NUMBER,
 		FREQ_MEASURE_TIMER_UNIT_AFIO_MAP,
-		FREQ_MEASURE_MIN_FREQ_MILLI_HZ);
+		FREQ_MEASURE_MIN_FREQ_MILLI_HZ,
+		&maxMeasurableFreqmHz,
+		NULL, NULL);
+
+	#if DEBUG_ON
+	trace_printf(
+		"maximum measurable frequency is: %luHz\n",
+		maxMeasurableFreqmHz / 1000);
+	#endif
 }
 
 void OSC_InitDMA(void)
@@ -341,11 +350,11 @@ void OSC_voidInitMCAL(void)
 
 	OSC_InitGPIO();
 
+	OSC_InitTIM();
+
 	OSC_InitEXTI();
 
 	OSC_InitADC();
-
-	OSC_InitTIM();
 
 	OSC_InitDMA();
 
