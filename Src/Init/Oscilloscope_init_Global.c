@@ -42,7 +42,7 @@ extern u8 Global_LargestVlaueInCurrentFrame;
 extern u8 Global_SmallestVlaueInCurrentFrame;
 extern b8 Global_Paused;
 extern volatile OSC_Up_Down_Target_t Global_UpDownTarget;
-extern volatile b8 Global_ReturnedFromMenu;
+extern volatile b8 Global_IsMenuOpen;
 
 extern volatile OSC_Cursor_t Cursor_v1;
 extern volatile OSC_Cursor_t Cursor_v2;
@@ -61,13 +61,14 @@ void OSC_voidInitGlobal(void)
 	Global_Paused = false;
 
 	Global_UpDownTarget = OSC_Up_Down_Target_ChangeVoltageDiv;
+	//Global_UpDownTarget = OSC_Up_Down_Target_ChangeTimeCursor2Position;
 
-	Global_ReturnedFromMenu = true;
+	Global_IsMenuOpen = false;
 
-	Cursor_v1 = (OSC_Cursor_t){0, false};
+	Cursor_v1 = (OSC_Cursor_t){50, true};
 	Cursor_v2 = (OSC_Cursor_t){0, false};
 	Cursor_t1 = (OSC_Cursor_t){0, false};
-	Cursor_t2 = (OSC_Cursor_t){0, false};
+	Cursor_t2 = (OSC_Cursor_t){11, true};
 }
 
 

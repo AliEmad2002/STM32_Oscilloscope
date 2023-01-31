@@ -34,6 +34,20 @@
 volatile TFT2_t Global_LCD;
 
 /*
+ * This is the image buffer.
+ * This buffer is virtually divided into two buffers, one to be sent to TFT,
+ * and another one to be processed while the first is sent.
+ */
+//volatile u16 Global_PixArr[2 * LINES_PER_IMAGE_BUFFER * 128];
+volatile u16 Global_PixArr[32 * 128];
+
+volatile u16* Global_ImgBufferArr[2] = {
+	Global_PixArr, &Global_PixArr[LINES_PER_IMAGE_BUFFER * 128]
+};
+
+volatile u16 Global_InfoImg[12 * 5 * 8];
+
+/*
  * Peak to peak value in a single frame.
  * Is calculated as the difference between the largest and smallest values in
  * current frame.
@@ -57,5 +71,8 @@ volatile u64 Global_LastMeasuredFreq;
 
 volatile OSC_Up_Down_Target_t Global_UpDownTarget;
 
-volatile b8 Global_ReturnedFromMenu;
+volatile b8 Global_IsMenuOpen;
 
+volatile u16 Global_SampleBuffer[NUMBER_OF_SAMPLES];
+
+volatile char Global_Str[128];

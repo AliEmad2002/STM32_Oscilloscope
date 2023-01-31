@@ -28,15 +28,16 @@
 
 /*	HAL	*/
 #include "TFT_interface_V2.h"
+#include "Rotary_Encoder_Interface.h"
 
 /*	SELF	*/
 #include "Oscilloscope_config.h"
 #include "Oscilloscope_Private.h"
 #include "Oscilloscope_init_HAL.h"
 
-extern void OSC_voidDMATransferCompleteCallback(void);
+extern volatile TFT2_t Global_LCD;
 
-extern TFT2_t Global_LCD;
+extern void OSC_voidSetDisplayBoundariesForSignalArea(void);
 
 void OSC_voidInitTFT(void)
 {
@@ -71,38 +72,14 @@ void OSC_voidDisplayStartupScreeen(void)
 	Delay_voidBlockingDelayMs(LCD_STARTUP_SCREEN_DELAY_MS);
 }
 
-void OSC_voidInitSignalDrawing(void)
-{
-//	/*	enable interrupt (to be used for less drawing overhead)	*/
-//	TFT2_voidSetDMATransferCompleteCallback(
-//		&Global_LCD, OSC_voidDMATransferCompleteCallback);
-//
-//	TFT2_voidEnableDMATransferCompleteInterrupt(&Global_LCD);
-}
-
-void OSC_voidInitInfoDrawing(void)
-{
-	/*
-	 * split display to two parts, large one for displaying signal (0-130),
-	 * and small one for signal data (131-160).
-	 * TODO: (based on saved user settings).
-	 *
-	 * The split can be cancelled from settings.
-	 */
-	TFT2_voidInitScroll(&Global_LCD, 0, 130, 32);
-}
-
 void OSC_voidInitHAL(void)
 {
 	OSC_voidInitTFT();
 
 	OSC_voidDisplayStartupScreeen();
 
-	OSC_voidInitSignalDrawing();
+	OSC_voidSetDisplayBoundariesForSignalArea();
 
-	OSC_voidInitInfoDrawing();
-
-	static volatile u32 foo = 55;
-	foo++;
+	Rotary_Encoder_voidInit();
 }
 

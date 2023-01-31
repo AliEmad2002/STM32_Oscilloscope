@@ -23,7 +23,7 @@
 
 #define LCD_STARTUP_SCREEN_DELAY_MS					0
 
-#define INFO_DRAWING_PERIODIC_TIME_MS				1000ul
+#define INFO_DRAWING_PERIODIC_TIME_MS				500ul
 
 #define LCD_BACKGROUND_COLOR_U8						colorBlackU8Val
 
@@ -37,13 +37,15 @@
 
 //#define LCD_MENU_FONT_SIZE							1
 
+#define LCD_FPS										30
+
 /*******************************************************************************
  * Running indication LED
  ******************************************************************************/
-#define LED_INDICATOR_PIN							GPIO_Pin_B11
+#define LED_INDICATOR_PIN							GPIO_Pin_B12
 
 /*******************************************************************************
- * Control buttons
+ * Control HW
  ******************************************************************************/
 /*
  * due to how EXTI in implemented in HW, buttons MUST be connected on different
@@ -55,12 +57,19 @@
  * by application!!
  */
 #define BUTTON_AUTO_ENTER_PIN						GPIO_Pin_A9
-#define BUTTON_PAUSE_RESUME_PIN						GPIO_Pin_B12
+#define BUTTON_PAUSE_RESUME_PIN						GPIO_Pin_B11
 #define BUTTON_CURSOR_MENU_PIN						GPIO_Pin_B10
-#define BUTTON_UP_PIN								GPIO_Pin_B0
-#define BUTTON_DOWN_PIN								GPIO_Pin_B1
 
 #define BUTTON_DEBOUNCING_TIME_MS					250ul
+#define ROTARY_DEBOUNCING_TIME_MS					25ul
+
+/*******************************************************************************
+ * Safe thread:
+ * Some routines are very critical and won't work right if they were interrupted
+ * while running in main thread. To solve this, put that routine in an EXTI
+ * callback and trigger it by SW in main thread.
+ ******************************************************************************/
+#define SAFE_THREAD_EXTI_LINE						1
 
 /*******************************************************************************
  * Analog channels and ADC configuration
@@ -69,6 +78,9 @@
  ******************************************************************************/
 /*	ADC sample time (an element of the enum 'ADC_SampleTime_t')	*/
 #define ADC_SAMPLE_TIME								ADC_SampleTime_1_5
+
+/*	(milli-Sample per second)	*/
+#define INITIAL_SAMPLING_FREQUENCY					1000000
 
 /*
  * a structure that defines the ADC channel and its maximum measurable
@@ -105,12 +117,24 @@ static const OSC_Config_ADC_Channel
 
 #define ADC_THRESHOLD_MAX							(4096 - 10)
 
+/*	These two arrays must be sorted ascendingly	*/
+#define NUMBER_OF_VOLT_DIVS							8
+static const u32 OSC_mVoltsPerDivArr[NUMBER_OF_VOLT_DIVS] = {
+	1, 5, 20, 100, 500, 1000, 2000, 5000
+};
+
+#define NUMBER_OF_TIME_DIVS							11
+static const u64 OSC_nSecondsPerDivArr[NUMBER_OF_TIME_DIVS] = {
+	1000, 2000, 10000, 100000, 200000, 500000,
+	1000000, 20000000, 100000000, 500000000, 700000000
+};
+
 /*******************************************************************************
  * frequency measurement
  ******************************************************************************/
 #define FREQ_MEASURE_TIMER_UNIT_NUMBER				1
 #define FREQ_MEASURE_TIMER_UNIT_AFIO_MAP			0
-#define FREQ_MEASURE_MIN_FREQ_MILLI_HZ				100000
+#define FREQ_MEASURE_MIN_FREQ_MILLI_HZ				10000
 
 #endif /* OSCILLOSCOPE_CONFIG_H_ */
 

@@ -33,10 +33,10 @@
 
 /*	HAL	*/
 #include "TFT_interface_V2.h"
+#include "Rotary_Encoder_Interface.h"
 
 #include "Oscilloscope_Private.h"
 #include "Oscilloscope_interface.h"
-
 
 int main(void)
 {

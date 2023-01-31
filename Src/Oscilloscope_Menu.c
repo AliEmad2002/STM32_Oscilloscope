@@ -30,15 +30,20 @@
 
 /*	HAL	*/
 #include "TFT_interface_V2.h"
+#include "Rotary_Encoder_Interface.h"
 
 /*	SELF	*/
 #include "Oscilloscope_Private.h"
 #include "Oscilloscope_config.h"
-#include "Oscilloscope_Menu.h"
+#include "Oscilloscope_Menu_Private.h"
+#include "Oscilloscope_Menu_Interface.h"
 
 extern volatile TFT2_t Global_LCD;
 extern volatile OSC_Up_Down_Target_t Global_UpDownTarget;
-extern volatile b8 Global_ReturnedFromMenu;
+extern volatile b8 Global_IsMenuOpen;
+
+extern volatile Rotary_Encoder_t OSC_RotaryEncoder;
+
 
 /*	pixel array of a single line	*/
 u16 menuLinePixArr[8][128];
@@ -105,37 +110,36 @@ void OSC_voidUpdateMenuOnDisplay(Menu_t* menu)
 
 void OSC_voidOpenMainMenu(void)
 {
-	/*	check debouncing first	*/
-	static u64 lastPressTime = 0;
+	/*	disable rotary encoder callbacks	*/
+	OSC_RotaryEncoder.countUpCallbackEnabled = false;
+	OSC_RotaryEncoder.countDownCallbackEnabled = false;
 
-	if (
-		STK_u64GetElapsedTicks() - lastPressTime <
-		BUTTON_DEBOUNCING_TIME_MS * 72000ul)
-	{
-		return;
-	}
-
-	/*	set "Global_ReturnedFromMenu" flag	*/
-	Global_ReturnedFromMenu = true;
+	/*	disable auto, pause and menu buttons EXTI lines	*/
+	EXTI_voidDisableLine(BUTTON_AUTO_ENTER_PIN % 16);
+	EXTI_voidDisableLine(BUTTON_CURSOR_MENU_PIN % 16);
+	EXTI_voidDisableLine(BUTTON_PAUSE_RESUME_PIN % 16);
 
 	OSC_voidOpenMenu(&mainMenu);
 
-	/*	Set TFT boundaries back to signal area	*/
+	/*	set screen boundaries for full signal image area	*/
 	TFT2_SET_X_BOUNDARIES(&Global_LCD, 0, 127);
-	TFT2_SET_Y_BOUNDARIES(&Global_LCD, 0, 137);
+	TFT2_SET_Y_BOUNDARIES(&Global_LCD, 0, NUMBER_OF_SAMPLES - 1);
 
-	/*	start data write operation	*/
+	/*	start data writing mode on screen	*/
 	TFT2_WRITE_CMD(&Global_LCD, TFT_CMD_MEM_WRITE);
 	TFT2_ENTER_DATA_MODE(&Global_LCD);
 
-	/*	clear all flags of presses of auto, pause, up and down buttons	*/
-	EXTI_CLEAR_FLAG(BUTTON_AUTO_ENTER_PIN % 16);
-	EXTI_CLEAR_FLAG(BUTTON_PAUSE_RESUME_PIN % 16);
-	EXTI_CLEAR_FLAG(BUTTON_UP_PIN % 16);
-	EXTI_CLEAR_FLAG(BUTTON_DOWN_PIN % 16);
+	/*	clear opened menu flag	*/
+	Global_IsMenuOpen = false;
 
-	/*	debouncing timestamp	*/
-	lastPressTime = STK_u64GetElapsedTicks();
+	/*	enable back rotary encoder callbacks	*/
+	OSC_RotaryEncoder.countUpCallbackEnabled = true;
+	OSC_RotaryEncoder.countDownCallbackEnabled = true;
+
+	/*	enable back auto, pause and menu buttons EXTI lines	*/
+	EXTI_voidEnableLine(BUTTON_AUTO_ENTER_PIN % 16);
+	EXTI_voidEnableLine(BUTTON_CURSOR_MENU_PIN % 16);
+	EXTI_voidEnableLine(BUTTON_PAUSE_RESUME_PIN % 16);
 }
 
 void OSC_voidOpenMenu(Menu_t* menu)
@@ -146,28 +150,34 @@ void OSC_voidOpenMenu(Menu_t* menu)
 	/*	show menu on the screen	*/
 	OSC_voidUpdateMenuOnDisplay(menu);
 
+	s32 lastRotaryCount = OSC_RotaryEncoder.count;
+
 	while(1)
 	{
-		/*	if user pressed up button	*/
-		if (GPIO_DIGITAL_READ(BUTTON_UP_PIN / 16, BUTTON_UP_PIN % 16))
+		/*	if user moves up	*/
+		if (OSC_RotaryEncoder.count > lastRotaryCount)
 		{
 			/*	select next element in menu	*/
 			Menu_voidSelectNextElement(menu);
 			/*	update display	*/
 			OSC_voidUpdateMenuOnDisplay(menu);
 			/*	debouncing delay	*/
-			Delay_voidBlockingDelayMs(150);
+			//Delay_voidBlockingDelayMs(150);
+			/*	update "lastRotaryCount"	*/
+			lastRotaryCount = OSC_RotaryEncoder.count;
 		}
 
-		/*	if user pressed down button	*/
-		if (GPIO_DIGITAL_READ(BUTTON_DOWN_PIN / 16, BUTTON_DOWN_PIN % 16))
+		/*	if user moves down	*/
+		if (OSC_RotaryEncoder.count < lastRotaryCount)
 		{
 			/*	select previous element in menu	*/
 			Menu_voidSelectPreviousElement(menu);
 			/*	update display	*/
 			OSC_voidUpdateMenuOnDisplay(menu);
 			/*	debouncing delay	*/
-			Delay_voidBlockingDelayMs(150);
+			//Delay_voidBlockingDelayMs(150);
+			/*	update "lastRotaryCount"	*/
+			lastRotaryCount = OSC_RotaryEncoder.count;
 		}
 
 		/*	if user pressed auto/enter button	*/

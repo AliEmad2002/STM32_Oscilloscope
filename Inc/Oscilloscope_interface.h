@@ -52,7 +52,7 @@ void OSC_voidMainSuperLoop(void);
 
 void OSC_voidGetInfoStr(char* str);
 
-void OSC_voidDrawInfoOnPixArray(u16* pixArr);
+void OSC_voidDrawInfo(void);
 
 /*
  * auto calibrates volts per div and time per div to properly

@@ -20,11 +20,12 @@
 
 /*
  * DMA1 channels used in mem to mem operations
- * (for drawing a single line of the display
+ * (for drawing a single line of the display)
+ * Notice that: lines 3, 5 are taken by SPI1, 2. Line 1 is taken by ADC1.
  */
-#define FIRST_LINE_SEGMENT_DMA_CHANNEL						DMA_ChannelNumber_1
-#define SECOND_LINE_SEGMENT_DMA_CHANNEL						DMA_ChannelNumber_2
-#define THIRD_LINE_SEGMENT_DMA_CHANNEL						DMA_ChannelNumber_4
+#define FIRST_LINE_SEGMENT_DMA_CHANNEL						DMA_ChannelNumber_2
+#define SECOND_LINE_SEGMENT_DMA_CHANNEL						DMA_ChannelNumber_4
+#define THIRD_LINE_SEGMENT_DMA_CHANNEL						DMA_ChannelNumber_6
 
 /*
  * The current target to be effected by the up and down buttons
@@ -48,7 +49,7 @@ typedef enum{
 #define LINES_PER_IMAGE_BUFFER								15
 
 /*	By test, this number better be dividable by 3	*/
-#define NUMBER_OF_IMAGE_BUFFERS_PER_FRAME					9
+#define NUMBER_OF_IMAGE_BUFFERS_PER_FRAME					8
 
 #define NUMBER_OF_SAMPLES	\
 	(LINES_PER_IMAGE_BUFFER * NUMBER_OF_IMAGE_BUFFERS_PER_FRAME)
@@ -59,6 +60,11 @@ typedef enum{
 /*	length of blank segment of a dashed line	*/
 #define DASHED_LINE_BLANK_SEGMENT_LEN						2
 
+/*	sum of the two previous values	*/
+#define SUM_OF_DASH_LEN		\
+	(DASHED_LINE_DRAWN_SEGMENT_LEN + DASHED_LINE_BLANK_SEGMENT_LEN)
+
+#define ADC_DMA_CHANNEL								DMA_ChannelNumber_1
 
 #endif /* INCLUDE_APP_OSCILLOSCOPE_PRIVATE_H_ */
 
