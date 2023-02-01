@@ -60,8 +60,9 @@ void OSC_voidInitGlobal(void)
 
 	Global_Paused = false;
 
-	Global_UpDownTarget = OSC_Up_Down_Target_ChangeVoltageDiv;
+	//Global_UpDownTarget = OSC_Up_Down_Target_ChangeVoltageDiv;
 	//Global_UpDownTarget = OSC_Up_Down_Target_ChangeTimeCursor2Position;
+	Global_UpDownTarget = OSC_Up_Down_Target_ChangeTimeDiv;
 
 	Global_IsMenuOpen = false;
 

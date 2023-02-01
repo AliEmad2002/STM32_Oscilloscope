@@ -348,11 +348,13 @@ void OSC_voidPreFillSampleBuffer(void)
 
 	/*	set freq (one sample per pixel)	*/
 	static u64 lastFreq = 0;
-	u64 freqSamplingmHz = 1000000000000ul / Global_CurrentNanoSecondsPerPix;
+	u64 freqSamplingmHz = 1e12 / Global_CurrentNanoSecondsPerPix;
 
 	if (freqSamplingmHz != lastFreq)
 	{
+		/*	set timer3 frequency to sampling frequency	*/
 		TIM_u64SetFrequency(3, freqSamplingmHz);
+
 		lastFreq = freqSamplingmHz;
 	}
 }
@@ -362,8 +364,8 @@ inline void OSC_voidStartFillingSampleBuffer(void)
 	/*	start sample capturing	*/
 	DMA_voidEnableChannel(DMA_UnitNumber_1, ADC_DMA_CHANNEL);
 
-	/*	enable trigger timer counter	*/
-	TIM_ENABLE_COUNTER(3);
+	/*	enable ADC trigger source	*/
+		TIM_ENABLE_COUNTER(3);
 }
 
 void OSC_voidWaitSampleBufferFill(void)
@@ -374,6 +376,40 @@ void OSC_voidWaitSampleBufferFill(void)
 
 	/*	disable trigger timer counter	*/
 	TIM_DISABLE_COUNTER(3);
+}
+
+/*
+ * when t_pix  < t_conv, interpolate / predict samples in between real samples.
+ */
+void OSC_voidInterpolate(void)
+{
+	u16 sampleBufferInterpolated[NUMBER_OF_SAMPLES];
+
+	for (u8 i = 0; i < NUMBER_OF_SAMPLES; i++)
+	{
+		volatile u64 t = i * Global_CurrentNanoSecondsPerPix;
+
+		volatile u8 j = t  / 1000;
+
+		volatile s64 t1 = j * 1000;
+
+		volatile s16 s1 = Global_SampleBuffer[j];
+		volatile s16 s2 = Global_SampleBuffer[j + 1];
+
+		volatile s16 s = (s64)((s2 - s1) * (t - t1)) / 1000 + s1;
+
+		if (s > 4000)
+			s = 4000;
+		else if (s < 10)
+			s = 10;
+
+		sampleBufferInterpolated[i] = (u16)s;
+	}
+
+	for (u8 i = 0; i < NUMBER_OF_SAMPLES; i++)
+	{
+		Global_SampleBuffer[i] = sampleBufferInterpolated[i];
+	}
 }
 
 void OSC_voidMainSuperLoop(void)
@@ -394,8 +430,18 @@ void OSC_voidMainSuperLoop(void)
 
 	u8 j = 0;
 
+	u64 lastFrameTimeStamp = 0;
+
 	while (1)
 	{
+		/*	wait for frame time to come (according to configured FPS)	*/
+		u64 timeSinceLastFrame = STK_u64GetElapsedTicks() - lastFrameTimeStamp;
+
+		while(timeSinceLastFrame < stkTicksPerSecond / LCD_FPS)
+			timeSinceLastFrame = STK_u64GetElapsedTicks() - lastFrameTimeStamp;
+
+		lastFrameTimeStamp = STK_u64GetElapsedTicks();
+
 		/*
 		 * if user opened menu, enter it.
 		 * (menu internally clears flag and resets display boundaries on exit)
@@ -428,6 +474,13 @@ void OSC_voidMainSuperLoop(void)
 
 			/*	wait sample buffer fill	*/
 			OSC_voidWaitSampleBufferFill();
+
+			/*
+			 * interpolate samples if and only if: t_pix < t_conv,
+			 * i.e.: t_pix < 1uS
+			 */
+			if (Global_CurrentNanoSecondsPerPix < 1000)
+				OSC_voidInterpolate();
 		}
 
 		/*	counter of the processed samples of current image frame	*/
@@ -619,41 +672,41 @@ void OSC_voidSetDisplayBoundariesForSignalArea(void)
 void OSC_voidGetNumberPritableVersion(
 	volatile u64 valInNano, u32* valInteger, u32* valFraction, char* unitPrefix)
 {
-	if (valInNano < 1000)
+	if (valInNano < 1e3)
 	{
 		*unitPrefix = 'n';
 		*valInteger = valInNano;
 		*valFraction = 0;
 	}
-	else if (valInNano < 1000000)
+	else if (valInNano < 1e6)
 	{
 		*unitPrefix = 'u';
-		*valInteger = valInNano / 1000;
-		*valFraction = (valInNano - 1000) / 100;
+		*valInteger = valInNano / 1e3;
+		*valFraction = (valInNano - 1e3) / 1e2;
 	}
-	else if (valInNano < 1000000000)
+	else if (valInNano < 1e9)
 	{
 		*unitPrefix = 'm';
-		*valInteger = valInNano / 1000000;
-		*valFraction = (valInNano - 1000000) / 100000;
+		*valInteger = valInNano / 1e6;
+		*valFraction = (valInNano - 1e6) / 1e5;
 	}
-	else if (valInNano < 1000000000000)
+	else if (valInNano < 1e12)
 	{
 		*unitPrefix = ' ';
-		*valInteger = valInNano / 1000000000;
-		*valFraction = (valInNano - 1000000000) / 100000000;
+		*valInteger = valInNano / 1e9;
+		*valFraction = (valInNano - 1e9) / 1e8;
 	}
-	else if (valInNano < 1000000000000000)
+	else if (valInNano < 1e15)
 	{
 		*unitPrefix = 'k';
-		*valInteger = valInNano / 1000000000000;
-		*valFraction = (valInNano - 1000000000000) / 100000000000;
+		*valInteger = valInNano / 1e12;
+		*valFraction = (valInNano - 1e12) / 1e11;
 	}
-	else if (valInNano < 1000000000000000000ull)
+	else if (valInNano < 1e18)
 	{
 		*unitPrefix = 'M';
-		*valInteger = valInNano / 1000000000000000ull;
-		*valFraction = (valInNano - 1000000000000000ull) / 100000000000000ull;
+		*valInteger = valInNano / 1e15;
+		*valFraction = (valInNano - 1e15) / 1e14;
 	}
 
 	/*	fraction is maximumly of 1 digit	*/
@@ -866,14 +919,30 @@ void OSC_voidAutoCalibrate(void)
 	}
 
 	/** Time calibration	**/
-	/*	get signal frequency	*/
+	/*
+	 * Get signal frequency.
+	 * Wait for CC1IF to raise, as it may be cleared by a previous frequency
+	 * read, which would lead to a fault measurement of a zero frequency.
+	 */
 	u64 freqmHz = 0;
 	/*
 	 * if CC1IF was not raised before reading CCR1, then no transition have
 	 * not happened. i.e.: freq = 0
 	 */
+	u64 startTime = STK_u64GetElapsedTicks();
+
+	while(!TIM_GET_STATUS_FLAG(FREQ_MEASURE_TIMER_UNIT_NUMBER, TIM_Status_CC1))
+	{
+		if (
+			STK_u64GetElapsedTicks() - startTime >
+			FREQ_MEASURE_TIMEOUT_MS * 72000
+		)
+			break;
+	}
+
 	if (TIM_GET_STATUS_FLAG(FREQ_MEASURE_TIMER_UNIT_NUMBER, TIM_Status_CC1))
-		freqmHz = TIM_u64GetFrequencyMeasured(FREQ_MEASURE_TIMER_UNIT_NUMBER);
+		freqmHz =
+			TIM_u64GetFrequencyMeasured(FREQ_MEASURE_TIMER_UNIT_NUMBER);
 
 	/*
 	 * set time per pix such that user can see 3 periods of the signal in one
@@ -889,6 +958,16 @@ void OSC_voidAutoCalibrate(void)
 			1000000000000ul / freqmHz / 40;
 
 	/**	Gain and voltage calibration	**/
+	/*	make ADC run in continuous mode	*/
+	ADC_voidEnableContinuousConversionMode(ADC_UnitNumber_1);
+
+	/*	make external trigger source: SW trigger	*/
+	ADC_voidSetExternalEventRegular(
+		ADC_UnitNumber_1, ADC_ExternalEventRegular_SWSTART);
+
+	/*	trigger start of conversion	*/
+	ADC_voidStartSWConversionRegular(ADC_UnitNumber_1);
+
 	ADC_ChannelNumber_t adcCh;
 	u8 i = 0;
 
@@ -936,6 +1015,13 @@ void OSC_voidAutoCalibrate(void)
 	/*	tell ADC that this is the channel to be converted	*/
 	ADC_voidSetSequenceRegular(
 		ADC_UnitNumber_1, ADC_RegularSequenceNumber_1, adcCh);
+
+	/*	disable ADC continuous mode	*/
+	ADC_voidEnableSingleConversionMode(ADC_UnitNumber_1);
+
+	/*	make external trigger source: TIM3TRGO	*/
+	ADC_voidSetExternalEventRegular(
+		ADC_UnitNumber_1, ADC_ExternalEventRegular_TIM3TRGO);
 
 	/**	set global parameters	**/
 	Global_CurrentMicroVoltsPerPix =

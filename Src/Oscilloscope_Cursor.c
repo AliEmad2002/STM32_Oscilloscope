@@ -41,11 +41,32 @@ volatile OSC_Cursor_t Cursor_v2;
 volatile OSC_Cursor_t Cursor_t1;
 volatile OSC_Cursor_t Cursor_t2;
 
+extern volatile OSC_Up_Down_Target_t Global_UpDownTarget;
+
 /*	enable / add cursor	*/
-void OSC_voidEnableCursorV1(void) {Cursor_v1.isEnabled = true;}
-void OSC_voidEnableCursorV2(void) {Cursor_v2.isEnabled = true;}
-void OSC_voidEnableCursorT1(void) {Cursor_t1.isEnabled = true;}
-void OSC_voidEnableCursorT2(void) {Cursor_t2.isEnabled = true;}
+void OSC_voidEnableCursorV1(void)
+{
+	Cursor_v1.isEnabled = true;
+	Global_UpDownTarget = OSC_Up_Down_Target_ChangeVoltageCursor1Position;
+}
+
+void OSC_voidEnableCursorV2(void)
+{
+	Cursor_v2.isEnabled = true;
+	Global_UpDownTarget = OSC_Up_Down_Target_ChangeVoltageCursor2Position;
+}
+
+void OSC_voidEnableCursorT1(void)
+{
+	Cursor_t1.isEnabled = true;
+	Global_UpDownTarget = OSC_Up_Down_Target_ChangeTimeCursor1Position;
+}
+
+void OSC_voidEnableCursorT2(void)
+{
+	Cursor_t2.isEnabled = true;
+	Global_UpDownTarget = OSC_Up_Down_Target_ChangeTimeCursor2Position;
+}
 
 /*	disable / remove cursor	*/
 void OSC_voidDisableCursorV1(void) {Cursor_v1.isEnabled = false;}
