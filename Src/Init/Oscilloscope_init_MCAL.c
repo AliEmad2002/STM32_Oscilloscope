@@ -57,7 +57,7 @@ void OSC_InitRCC(void)
 	/*	ADC	*/
 	RCC_voidEnablePeripheralClk(RCC_Bus_APB2, RCC_PERIPHERAL_ADC1);
 	RCC_voidEnablePeripheralClk(RCC_Bus_APB2, RCC_PERIPHERAL_ADC2);
-	RCC_voidSetAdcPrescaler(RCC_ADC_Prescaler_PCLK2_by6);
+	RCC_voidSetAdcPrescaler(RCC_ADC_Prescaler_PCLK2_by4);
 
 	/*	TIM	*/
 	RCC_voidEnablePeripheralClk(RCC_Bus_APB1, RCC_PERIPHERAL_TIM3);

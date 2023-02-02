@@ -66,6 +66,27 @@ typedef enum{
 
 #define ADC_DMA_CHANNEL								DMA_ChannelNumber_1
 
+#define ADC_MIN_CONV_TIME_NANO_SECOND				1000		// 1uS
+
+#define ADC_MAX_SAMPLING_FREQUENCY_MILLI_HZ	\
+	(1e12 / ADC_MIN_CONV_TIME_NANO_SECOND)
+
+/*
+ * the more samples per period, the more accurate the display is at higher
+ * frequency periodic signals. (Thanks to interleaved sampling mode)
+ */
+#define MIN_NUMBER_OF_REAL_SAMPLES_PER_SIGNAL_PERIOD	10
+
+/*
+ * this is the frequency after which the device enters the interleaved sampling
+ * mode.
+ */
+#define INTERLEAVED_SAMPLING_THRESHOLD_FREQUENCY_MILLI_HZ	\
+	(                                                       \
+		ADC_MAX_SAMPLING_FREQUENCY_MILLI_HZ /               \
+		MIN_NUMBER_OF_REAL_SAMPLES_PER_SIGNAL_PERIOD        \
+	)
+
 #endif /* INCLUDE_APP_OSCILLOSCOPE_PRIVATE_H_ */
 
 

@@ -67,8 +67,6 @@ extern volatile u16 Global_InfoImg[12 * 5 * 8];
 //extern volatile u16 Global_PixArr[2 * LINES_PER_IMAGE_BUFFER * 128];
 extern volatile u16 Global_PixArr[32 * 128];
 
-extern volatile Rotary_Encoder_t OSC_RotaryEncoder;
-
 extern volatile OSC_Cursor_t Cursor_v1;
 extern volatile OSC_Cursor_t Cursor_v2;
 extern volatile OSC_Cursor_t Cursor_t1;
@@ -353,6 +351,11 @@ void OSC_voidPreFillSampleBuffer(void)
 	if (freqSamplingmHz != lastFreq)
 	{
 		/*	set timer3 frequency to sampling frequency	*/
+		if (freqSamplingmHz > ADC_MAX_SAMPLING_FREQUENCY_MILLI_HZ)
+		{
+			freqSamplingmHz = ADC_MAX_SAMPLING_FREQUENCY_MILLI_HZ;
+		}
+
 		TIM_u64SetFrequency(3, freqSamplingmHz);
 
 		lastFreq = freqSamplingmHz;
@@ -389,14 +392,15 @@ void OSC_voidInterpolate(void)
 	{
 		volatile u64 t = i * Global_CurrentNanoSecondsPerPix;
 
-		volatile u8 j = t  / 1000;
+		volatile u8 j = t  / ADC_MIN_CONV_TIME_NANO_SECOND;
 
-		volatile s64 t1 = j * 1000;
+		volatile s64 t1 = j * ADC_MIN_CONV_TIME_NANO_SECOND;
 
 		volatile s16 s1 = Global_SampleBuffer[j];
 		volatile s16 s2 = Global_SampleBuffer[j + 1];
 
-		volatile s16 s = (s64)((s2 - s1) * (t - t1)) / 1000 + s1;
+		volatile s16 s =
+			(s64)((s2 - s1) * (t - t1)) / ADC_MIN_CONV_TIME_NANO_SECOND + s1;
 
 		if (s > 4000)
 			s = 4000;
@@ -479,12 +483,22 @@ void OSC_voidMainSuperLoop(void)
 			 * interpolate samples if and only if: t_pix < t_conv,
 			 * i.e.: t_pix < 1uS
 			 */
-			if (Global_CurrentNanoSecondsPerPix < 1000)
+			if (Global_CurrentNanoSecondsPerPix < ADC_MIN_CONV_TIME_NANO_SECOND)
 				OSC_voidInterpolate();
 		}
 
 		/*	counter of the processed samples of current image frame	*/
 		u8 readCount = 0;
+
+		/*
+		 * these are set to the first reading in the sample buffer, in order to
+		 * obtain valid vPP.
+		 */
+		Global_LargestVlaueInCurrentFrame =
+			((3300000ul * (u64)Global_SampleBuffer[0]) /
+			(u64)Global_CurrentMicroVoltsPerPix) >> 12;
+
+		Global_SmallestVlaueInCurrentFrame = Global_LargestVlaueInCurrentFrame;
 
 		/*	draw current image frame of screen	*/
 		while(1)
@@ -501,32 +515,6 @@ void OSC_voidMainSuperLoop(void)
 					((3300000ul * (u64)Global_SampleBuffer[readCount]) /
 					(u64)Global_CurrentMicroVoltsPerPix) >> 12;
 
-				if (currentReadU64 > 127)
-				{
-					currentRead = 127;
-				}
-				else
-				{
-					currentRead = (u8)currentReadU64;
-				}
-
-				/*
-				 * find the smaller and the larger of 'currentRead' and
-				 * 'lastRead'
-				 */
-				if (currentRead > lastRead)
-				{
-					currentSmaller = lastRead;
-					currentLarger = currentRead;
-				}
-				else
-				{
-					currentSmaller = currentRead;
-					currentLarger = lastRead;
-				}
-
-				lastRead = currentRead;
-
 				/*
 				 * wait for DMA 1st, 2nd, 3rd channels transfer complete
 				 */
@@ -539,43 +527,85 @@ void OSC_voidMainSuperLoop(void)
 				DMA_voidWaitTillChannelIsFreeAndDisableIt(
 					DMA_UnitNumber_1, THIRD_LINE_SEGMENT_DMA_CHANNEL);
 
-				/*
-				 * draw background color from zero to just before smaller
-				 */
-				DMA_voidSetMemoryAddress(
-					DMA_UnitNumber_1, FIRST_LINE_SEGMENT_DMA_CHANNEL,
-					&Global_ImgBufferArr[j][i * 128]);
+				if (currentReadU64 > 127)
+				{
+					/*	fill line with background color	*/
+					DMA_voidSetMemoryAddress(
+						DMA_UnitNumber_1, FIRST_LINE_SEGMENT_DMA_CHANNEL,
+						&Global_ImgBufferArr[j][i * 128]);
 
-				DMA_voidSetNumberOfData(
-					DMA_UnitNumber_1, FIRST_LINE_SEGMENT_DMA_CHANNEL,
-					currentSmaller);
+					DMA_voidSetNumberOfData(
+						DMA_UnitNumber_1, FIRST_LINE_SEGMENT_DMA_CHANNEL,
+						127);
 
-				DMA_voidEnableChannel(
-					DMA_UnitNumber_1, FIRST_LINE_SEGMENT_DMA_CHANNEL);
+					DMA_voidEnableChannel(
+						DMA_UnitNumber_1, FIRST_LINE_SEGMENT_DMA_CHANNEL);
+				}
+				else
+				{
+					currentRead = (u8)currentReadU64;
 
-				/*	draw main color from smaller to larger	*/
-				DMA_voidSetMemoryAddress(
-					DMA_UnitNumber_1, SECOND_LINE_SEGMENT_DMA_CHANNEL,
-					&Global_ImgBufferArr[j][i * 128 + currentSmaller]);
+					/*
+					 * find the smaller and the larger of 'currentRead' and
+					 * 'lastRead'
+					 */
+					if (currentRead > lastRead)
+					{
+						currentSmaller = lastRead;
+						currentLarger = currentRead;
+					}
+					else
+					{
+						currentSmaller = currentRead;
+						currentLarger = lastRead;
+					}
 
-				DMA_voidSetNumberOfData(
-					DMA_UnitNumber_1, SECOND_LINE_SEGMENT_DMA_CHANNEL,
-					currentLarger - currentSmaller + 1);
+					lastRead = currentRead;
 
-				DMA_voidEnableChannel(
-					DMA_UnitNumber_1, SECOND_LINE_SEGMENT_DMA_CHANNEL);
+					/*	find largest value in current frame	*/
+					if (currentRead > Global_LargestVlaueInCurrentFrame)
+						Global_LargestVlaueInCurrentFrame = currentRead;
+					else if (currentRead < Global_SmallestVlaueInCurrentFrame)
+						Global_SmallestVlaueInCurrentFrame = currentRead;
 
-				/*	draw background color from after larger to 127	*/
-				DMA_voidSetMemoryAddress(
-					DMA_UnitNumber_1, THIRD_LINE_SEGMENT_DMA_CHANNEL,
-					&Global_ImgBufferArr[j][i * 128 + currentLarger + 1]);
+					/*
+					 * draw background color from zero to just before smaller
+					 */
+					DMA_voidSetMemoryAddress(
+						DMA_UnitNumber_1, FIRST_LINE_SEGMENT_DMA_CHANNEL,
+						&Global_ImgBufferArr[j][i * 128]);
 
-				DMA_voidSetNumberOfData(
-					DMA_UnitNumber_1, THIRD_LINE_SEGMENT_DMA_CHANNEL,
-					127 - currentLarger);
+					DMA_voidSetNumberOfData(
+						DMA_UnitNumber_1, FIRST_LINE_SEGMENT_DMA_CHANNEL,
+						currentSmaller);
 
-				DMA_voidEnableChannel(
-					DMA_UnitNumber_1, THIRD_LINE_SEGMENT_DMA_CHANNEL);
+					DMA_voidEnableChannel(
+						DMA_UnitNumber_1, FIRST_LINE_SEGMENT_DMA_CHANNEL);
+
+					/*	draw main color from smaller to larger	*/
+					DMA_voidSetMemoryAddress(
+						DMA_UnitNumber_1, SECOND_LINE_SEGMENT_DMA_CHANNEL,
+						&Global_ImgBufferArr[j][i * 128 + currentSmaller]);
+
+					DMA_voidSetNumberOfData(
+						DMA_UnitNumber_1, SECOND_LINE_SEGMENT_DMA_CHANNEL,
+						currentLarger - currentSmaller + 1);
+
+					DMA_voidEnableChannel(
+						DMA_UnitNumber_1, SECOND_LINE_SEGMENT_DMA_CHANNEL);
+
+					/*	draw background color from after larger to 127	*/
+					DMA_voidSetMemoryAddress(
+						DMA_UnitNumber_1, THIRD_LINE_SEGMENT_DMA_CHANNEL,
+						&Global_ImgBufferArr[j][i * 128 + currentLarger + 1]);
+
+					DMA_voidSetNumberOfData(
+						DMA_UnitNumber_1, THIRD_LINE_SEGMENT_DMA_CHANNEL,
+						127 - currentLarger);
+
+					DMA_voidEnableChannel(
+						DMA_UnitNumber_1, THIRD_LINE_SEGMENT_DMA_CHANNEL);
+				}
 
 				/*	draw time cursors (if any)	*/
 				if (Cursor_t1.isEnabled && Cursor_t1.pos == readCount)
@@ -590,7 +620,6 @@ void OSC_voidMainSuperLoop(void)
 							Global_ImgBufferArr[j][index] =
 								LCD_CURSOR1_DRAWING_COLOR_U16;
 						}
-
 					}
 				}
 
@@ -655,6 +684,10 @@ void OSC_voidMainSuperLoop(void)
 			if (readCount == NUMBER_OF_SAMPLES)
 				break;
 		}
+
+		Global_PeakToPeakValueInCurrentFrame =
+			Global_LargestVlaueInCurrentFrame -
+			Global_SmallestVlaueInCurrentFrame;
 	}
 }
 
@@ -796,7 +829,7 @@ void OSC_voidGetInfoStr(char* str)
 		&t1Fraction, &t1UnitPrefix);
 
 	/**	t2	**/
-	u64 t2 = Cursor_t2.pos * Global_CurrentNanoSecondsPerPix;
+	volatile u64 t2 = Cursor_t2.pos * Global_CurrentNanoSecondsPerPix;
 
 	char t2UnitPrefix;
 	u32 t2Integer, t2Fraction;
@@ -947,15 +980,14 @@ void OSC_voidAutoCalibrate(void)
 	/*
 	 * set time per pix such that user can see 3 periods of the signal in one
 	 * frame.
-	 * eqn: time_per_pix = 3 * T / 120
-	 * where T is the periodic time of the signal,
-	 * 120 is the width of the image.
+	 * eqn: time_per_pix = 3 * T / N_SAMPLES,
+	 * where T is the periodic time of the signal.
 	 */
 	if (freqmHz == 0)
 		Global_CurrentNanoSecondsPerPix = 1000;
 	else
 		Global_CurrentNanoSecondsPerPix =
-			1000000000000ul / freqmHz / 40;
+			3e12 / freqmHz / NUMBER_OF_SAMPLES;
 
 	/**	Gain and voltage calibration	**/
 	/*	make ADC run in continuous mode	*/

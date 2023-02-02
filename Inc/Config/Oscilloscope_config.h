@@ -138,7 +138,7 @@ static const u64 OSC_nSecondsPerDivArr[NUMBER_OF_TIME_DIVS] = {
  ******************************************************************************/
 #define FREQ_MEASURE_TIMER_UNIT_NUMBER				1
 #define FREQ_MEASURE_TIMER_UNIT_AFIO_MAP			0
-#define FREQ_MEASURE_MIN_FREQ_MILLI_HZ				10000
+#define FREQ_MEASURE_MIN_FREQ_MILLI_HZ				(1 * 1000 * 1000)
 
 /*
  * Used in frequency measurement in auto calibrate function. This is the timeout
