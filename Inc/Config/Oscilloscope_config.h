@@ -31,9 +31,13 @@
 
 #define LCD_MAIN_DRAWING_COLOR_U16					(colorWhite.code565)
 
+#define LCD_SECONDARY_DRAWING_COLOR_U16				(colorBlue.code565)
+
 #define LCD_CURSOR1_DRAWING_COLOR_U16				(colorRed.code565)
 
 #define LCD_CURSOR2_DRAWING_COLOR_U16				(colorYellow.code565)
+
+#define LCD_AXIS_DRAWING_COLOR_U16					(colorYellow.code565)
 
 //#define LCD_MENU_FONT_SIZE							1
 
@@ -56,9 +60,8 @@
  * Note: Do not use the line of the frequency measurement pin, as it is used
  * by application!!
  */
-#define BUTTON_AUTO_ENTER_PIN						GPIO_Pin_A9
+#define BUTTON_AUTO_ENTER_MENU_PIN					GPIO_Pin_A9
 #define BUTTON_PAUSE_RESUME_PIN						GPIO_Pin_B11
-#define BUTTON_CURSOR_MENU_PIN						GPIO_Pin_B10
 
 #define BUTTON_DEBOUNCING_TIME_MS					250ul
 #define ROTARY_DEBOUNCING_TIME_MS					25ul
@@ -82,41 +85,13 @@
 /*	(milli-Sample per second)	*/
 #define INITIAL_SAMPLING_FREQUENCY					1000000
 
-/*
- * a structure that defines the ADC channel and its maximum measurable
- * peak-to-peak voltage (that is due to amplifier).
- */
-typedef struct{
-	ADC_ChannelNumber_t adcChannelNumber;
-	u16 maxVPPinMilliVolts;
-}OSC_Config_ADC_Channel;
+#define INPUT_CH1_ADC_CHANNEL						ADC_ChannelNumber_3
+
+#define INPUT_CH2_ADC_CHANNEL						ADC_ChannelNumber_5
 
 /*******************************************************************************
- * Oscilloscope channel 1 configurations:
+ * Div. configurations:
  ******************************************************************************/
-/*	number of levels for channel 1	*/
-#define CHANNEL_1_NUMBER_OF_LEVELS					1 //6
-
-/*
- * array of ADC1 channels connected to these levels.
- * NOTICE: the following array must be ascendingly sorted in terms of
- * maximum measurable peak-to-peak voltage. (as it is useful in the 'auto'
- * funuction)
- */
-static const OSC_Config_ADC_Channel
-	oscCh1AdcChannels[CHANNEL_1_NUMBER_OF_LEVELS] = {
-		//(OSC_Config_ADC_Channel){ADC_ChannelNumber_0, 5},
-		//(OSC_Config_ADC_Channel){ADC_ChannelNumber_1, 20},
-		//(OSC_Config_ADC_Channel){ADC_ChannelNumber_2, 1000},
-		(OSC_Config_ADC_Channel){ADC_ChannelNumber_3, 3300}
-		//(OSC_Config_ADC_Channel){ADC_ChannelNumber_4, 5000},
-		//(OSC_Config_ADC_Channel){ADC_ChannelNumber_5, 10000},
-};
-
-#define ADC_THRESHOLD_MIN							(10)
-
-#define ADC_THRESHOLD_MAX							(4096 - 10)
-
 /*	These two arrays must be sorted ascendingly	*/
 #define NUMBER_OF_VOLT_DIVS							8
 static const u32 OSC_mVoltsPerDivArr[NUMBER_OF_VOLT_DIVS] = {
@@ -136,9 +111,13 @@ static const u64 OSC_nSecondsPerDivArr[NUMBER_OF_TIME_DIVS] = {
 /*******************************************************************************
  * frequency measurement
  ******************************************************************************/
-#define FREQ_MEASURE_TIMER_UNIT_NUMBER				1
-#define FREQ_MEASURE_TIMER_UNIT_AFIO_MAP			0
-#define FREQ_MEASURE_MIN_FREQ_MILLI_HZ				(1 * 1000 * 1000)
+#define FREQ_MEASURE_CH1_TIMER_UNIT_NUMBER				2
+#define FREQ_MEASURE_CH1_TIMER_UNIT_AFIO_MAP			0
+#define FREQ_MEASURE_CH1_MIN_FREQ_MILLI_HZ				(1 * 10 * 1000)
+
+#define FREQ_MEASURE_CH2_TIMER_UNIT_NUMBER				3
+#define FREQ_MEASURE_CH2_TIMER_UNIT_AFIO_MAP			0
+#define FREQ_MEASURE_CH2_MIN_FREQ_MILLI_HZ				(1 * 10 * 1000)
 
 /*
  * Used in frequency measurement in auto calibrate function. This is the timeout

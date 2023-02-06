@@ -37,12 +37,26 @@
 /*******************************************************************************
  * Extern global variables (from private.c file):
  ******************************************************************************/
-extern u8 Global_PeakToPeakValueInCurrentFrame;
-extern u8 Global_LargestVlaueInCurrentFrame;
-extern u8 Global_SmallestVlaueInCurrentFrame;
-extern b8 Global_Paused;
+extern volatile u8 Global_Ch1PeakToPeakValueInCurrentFrame;
+extern volatile u8 Global_Ch1MinValueInCurrentFrame;
+extern volatile u8 Global_Ch1MaxValueInCurrentFrame;
+extern volatile u8 Global_Ch2PeakToPeakValueInCurrentFrame;
+extern volatile u8 Global_Ch2MinValueInCurrentFrame;
+extern volatile u8 Global_Ch2MaxValueInCurrentFrame;
+extern volatile b8 Global_Paused;
 extern volatile OSC_Up_Down_Target_t Global_UpDownTarget;
 extern volatile b8 Global_IsMenuOpen;
+extern volatile b8 Global_IsCh1Enabled;
+extern volatile b8 Global_IsCh2Enabled;
+extern volatile u8 Global_LastRead1;
+extern volatile u8 Global_LastRead2;
+extern volatile u8 Global_Smaller1;
+extern volatile u8 Global_Larger1;
+extern volatile u8 Global_Smaller2;
+extern volatile u8 Global_Larger2;
+extern volatile s8 Global_Offset1;
+extern volatile s8 Global_Offset2;
+extern volatile OSC_RunningMode_t Global_CurrentRunningMode;
 
 extern volatile OSC_Cursor_t Cursor_v1;
 extern volatile OSC_Cursor_t Cursor_v2;
@@ -54,9 +68,12 @@ extern volatile OSC_Cursor_t Cursor_t2;
  ******************************************************************************/
 void OSC_voidInitGlobal(void)
 {
-	Global_PeakToPeakValueInCurrentFrame = 0;
-	Global_LargestVlaueInCurrentFrame = 0;
-	Global_SmallestVlaueInCurrentFrame = 0;
+	Global_Ch1PeakToPeakValueInCurrentFrame = 0;
+	Global_Ch1MinValueInCurrentFrame = 0;
+	Global_Ch1MaxValueInCurrentFrame = 0;
+	Global_Ch2PeakToPeakValueInCurrentFrame = 0;
+	Global_Ch2MinValueInCurrentFrame = 0;
+	Global_Ch2MaxValueInCurrentFrame = 0;
 
 	Global_Paused = false;
 
@@ -66,10 +83,24 @@ void OSC_voidInitGlobal(void)
 
 	Global_IsMenuOpen = false;
 
-	Cursor_v1 = (OSC_Cursor_t){50, true};
+	Global_IsCh1Enabled = true;
+	Global_IsCh2Enabled = true;
+
+	Global_LastRead1 = 0;
+	Global_LastRead2 = 0;
+	Global_Smaller1 = 0;
+	Global_Larger1 = 0;
+	Global_Smaller2 = 0;
+	Global_Larger2 = 0;
+	Global_Offset1 = 0;
+	Global_Offset2 = 0;
+
+	Global_CurrentRunningMode = OSC_RunningMode_Normal;
+
+	Cursor_v1 = (OSC_Cursor_t){0, false};
 	Cursor_v2 = (OSC_Cursor_t){0, false};
 	Cursor_t1 = (OSC_Cursor_t){0, false};
-	Cursor_t2 = (OSC_Cursor_t){11, true};
+	Cursor_t2 = (OSC_Cursor_t){0, false};
 }
 
 

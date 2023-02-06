@@ -19,24 +19,25 @@
 #define PIXELS_PER_TIME_DIV									15
 
 /*
- * DMA1 channels used in mem to mem operations
- * (for drawing a single line of the display)
+ * DMA1 channel used in mem to mem operations
+ * (for drawing a single line segment of the display)
  * Notice that: lines 3, 5 are taken by SPI1, 2. Line 1 is taken by ADC1.
  */
-#define FIRST_LINE_SEGMENT_DMA_CHANNEL						DMA_ChannelNumber_2
-#define SECOND_LINE_SEGMENT_DMA_CHANNEL						DMA_ChannelNumber_4
-#define THIRD_LINE_SEGMENT_DMA_CHANNEL						DMA_ChannelNumber_6
+#define LINE_SEGMENT_DMA_CHANNEL						DMA_ChannelNumber_2
 
 /*
  * The current target to be effected by the up and down buttons
  */
 typedef enum{
-	OSC_Up_Down_Target_ChangeVoltageDiv,
+	OSC_Up_Down_Target_ChangeCh1VoltageDiv,
+	OSC_Up_Down_Target_ChangeCh2VoltageDiv,
 	OSC_Up_Down_Target_ChangeTimeDiv,
 	OSC_Up_Down_Target_ChangeVoltageCursor1Position,
 	OSC_Up_Down_Target_ChangeVoltageCursor2Position,
 	OSC_Up_Down_Target_ChangeTimeCursor1Position,
 	OSC_Up_Down_Target_ChangeTimeCursor2Position,
+	OSC_Up_Down_Target_ChangeCh1Offset,
+	OSC_Up_Down_Target_ChangeCh2Offset,
 	OSC_Up_Down_Target_ChangeBrightness
 }OSC_Up_Down_Target_t;
 
@@ -86,6 +87,10 @@ typedef enum{
 		ADC_MAX_SAMPLING_FREQUENCY_MILLI_HZ /               \
 		MIN_NUMBER_OF_REAL_SAMPLES_PER_SIGNAL_PERIOD        \
 	)
+
+typedef enum{
+	OSC_RunningMode_Normal
+}OSC_RunningMode_t;
 
 #endif /* INCLUDE_APP_OSCILLOSCOPE_PRIVATE_H_ */
 

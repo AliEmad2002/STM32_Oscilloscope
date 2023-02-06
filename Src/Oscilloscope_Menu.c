@@ -115,8 +115,7 @@ void OSC_voidOpenMainMenu(void)
 	OSC_RotaryEncoder.countDownCallbackEnabled = false;
 
 	/*	disable auto, pause and menu buttons EXTI lines	*/
-	EXTI_voidDisableLine(BUTTON_AUTO_ENTER_PIN % 16);
-	EXTI_voidDisableLine(BUTTON_CURSOR_MENU_PIN % 16);
+	EXTI_voidDisableLine(BUTTON_AUTO_ENTER_MENU_PIN % 16);
 	EXTI_voidDisableLine(BUTTON_PAUSE_RESUME_PIN % 16);
 
 	OSC_voidOpenMenu(&mainMenu);
@@ -137,8 +136,7 @@ void OSC_voidOpenMainMenu(void)
 	OSC_RotaryEncoder.countDownCallbackEnabled = true;
 
 	/*	enable back auto, pause and menu buttons EXTI lines	*/
-	EXTI_voidEnableLine(BUTTON_AUTO_ENTER_PIN % 16);
-	EXTI_voidEnableLine(BUTTON_CURSOR_MENU_PIN % 16);
+	EXTI_voidEnableLine(BUTTON_AUTO_ENTER_MENU_PIN % 16);
 	EXTI_voidEnableLine(BUTTON_PAUSE_RESUME_PIN % 16);
 }
 
@@ -183,7 +181,8 @@ void OSC_voidOpenMenu(Menu_t* menu)
 		/*	if user pressed auto/enter button	*/
 		if (
 			GPIO_DIGITAL_READ(
-				BUTTON_AUTO_ENTER_PIN / 16, BUTTON_AUTO_ENTER_PIN % 16))
+				BUTTON_AUTO_ENTER_MENU_PIN / 16,
+				BUTTON_AUTO_ENTER_MENU_PIN % 16))
 		{
 			/*	debouncing delay	*/
 			Delay_voidBlockingDelayMs(150);
@@ -196,9 +195,14 @@ void OSC_voidOpenMenu(Menu_t* menu)
 }
 
 /*	callback functions	*/
-void OSC_voidSelectChangeVoltageDivAsUpDownTraget(void)
+void OSC_voidSelectChangeCh1VoltageDivAsUpDownTraget(void)
 {
-	Global_UpDownTarget = OSC_Up_Down_Target_ChangeVoltageDiv;
+	Global_UpDownTarget = OSC_Up_Down_Target_ChangeCh1VoltageDiv;
+}
+
+void OSC_voidSelectChangeCh2VoltageDivAsUpDownTraget(void)
+{
+	Global_UpDownTarget = OSC_Up_Down_Target_ChangeCh2VoltageDiv;
 }
 
 void OSC_voidSelectChangeTimeDivAsUpDownTraget(void)
@@ -224,6 +228,16 @@ void OSC_voidSelectChangeT1Position(void)
 void OSC_voidSelectChangeT2Position(void)
 {
 	Global_UpDownTarget = OSC_Up_Down_Target_ChangeTimeCursor2Position;
+}
+
+void OSC_voidSelectChangeCh1Offset(void)
+{
+	Global_UpDownTarget = OSC_Up_Down_Target_ChangeCh1Offset;
+}
+
+void OSC_voidSelectChangeCh2Offset(void)
+{
+	Global_UpDownTarget = OSC_Up_Down_Target_ChangeCh2Offset;
 }
 
 void OSC_voidSelectChangeBrightness(void)

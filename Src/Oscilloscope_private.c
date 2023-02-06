@@ -55,14 +55,18 @@ volatile u16 Global_InfoImg[12 * 5 * 8];
  * equals "tftScrollCounterMax".
  * Unit is: [TFT screen pixels].
  */
-volatile u8 Global_PeakToPeakValueInCurrentFrame;
-volatile u8 Global_LargestVlaueInCurrentFrame;
-volatile u8 Global_SmallestVlaueInCurrentFrame;
+volatile u8 Global_Ch1PeakToPeakValueInCurrentFrame;
+volatile u8 Global_Ch1MinValueInCurrentFrame;
+volatile u8 Global_Ch1MaxValueInCurrentFrame;
+
+volatile u8 Global_Ch2PeakToPeakValueInCurrentFrame;
+volatile u8 Global_Ch2MinValueInCurrentFrame;
+volatile u8 Global_Ch2MaxValueInCurrentFrame;
 
 /*	current resolution values	*/
-volatile u32 Global_CurrentMicroVoltsPerPix;
+volatile u32 Global_CurrentCh1MicroVoltsPerPix;
+volatile u32 Global_CurrentCh2MicroVoltsPerPix;
 volatile u64 Global_CurrentNanoSecondsPerPix;
-volatile u8 Global_CurrentUsedAdcChannelIndex;
 
 /*	pausing of display	*/
 volatile b8 Global_Paused;
@@ -73,6 +77,27 @@ volatile OSC_Up_Down_Target_t Global_UpDownTarget;
 
 volatile b8 Global_IsMenuOpen;
 
-volatile u16 Global_SampleBuffer[NUMBER_OF_SAMPLES];
+volatile u16 Global_SampleBuffer[2 * NUMBER_OF_SAMPLES];
 
 volatile char Global_Str[128];
+
+volatile b8 Global_IsCh1Enabled;
+volatile b8 Global_IsCh2Enabled;
+
+/*	voltage in pixels	*/
+volatile u8 Global_LastRead1;
+volatile u8 Global_LastRead2;
+
+volatile u8 Global_Smaller1;
+volatile u8 Global_Larger1;
+
+volatile u8 Global_Smaller2;
+volatile u8 Global_Larger2;
+
+volatile s8 Global_Offset1;
+volatile s8 Global_Offset2;
+
+
+/*	current running mode	*/
+volatile OSC_RunningMode_t Global_CurrentRunningMode;
+

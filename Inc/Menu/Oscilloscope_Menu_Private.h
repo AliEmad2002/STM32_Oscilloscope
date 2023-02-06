@@ -9,12 +9,15 @@
 #define INCLUDE_APP_OSCILLOSCOPE_MENU_H_
 
 
-void OSC_voidSelectChangeVoltageDivAsUpDownTraget(void);
+void OSC_voidSelectChangeCh1VoltageDivAsUpDownTraget(void);
+void OSC_voidSelectChangeCh2VoltageDivAsUpDownTraget(void);
 void OSC_voidSelectChangeTimeDivAsUpDownTraget(void);
 void OSC_voidSelectChangeV1Position(void);
 void OSC_voidSelectChangeV2Position(void);
 void OSC_voidSelectChangeT1Position(void);
 void OSC_voidSelectChangeT2Position(void);
+void OSC_voidSelectChangeCh1Offset(void);
+void OSC_voidSelectChangeCh2Offset(void);
 void OSC_voidSelectChangeBrightness(void);
 
 /*	enable / add cursor	*/
@@ -41,6 +44,27 @@ extern void OSC_voidDecrementCursorV2(void);
 extern void OSC_voidDecrementCursorT1(void);
 extern void OSC_voidDecrementCursorT2(void);
 
+/*	enable channel	*/
+extern void OSC_voidEnableCh1(void);
+extern void OSC_voidEnableCh2(void);
+extern void OSC_voidDisableCh1(void);
+extern void OSC_voidDisableCh2(void);
+
+static Menu_t changeVoltageDivMenu = {
+	.currentSelected = 0,
+
+	.numberOfElements = 2,
+
+	.elementArr[0] = {
+		" Ch1", Menu_ElementType_Callback,
+		OSC_voidSelectChangeCh1VoltageDivAsUpDownTraget
+	},
+
+	.elementArr[1] = {
+		" Ch2", Menu_ElementType_Callback,
+		OSC_voidSelectChangeCh2VoltageDivAsUpDownTraget
+	}
+};
 
 static Menu_t changeDivMenu = {
 	.currentSelected = 0,
@@ -48,14 +72,49 @@ static Menu_t changeDivMenu = {
 	.numberOfElements = 2,
 
 	.elementArr[0] = {
-		" Voltage", Menu_ElementType_Callback,
-		OSC_voidSelectChangeVoltageDivAsUpDownTraget
+		" Voltage", Menu_ElementType_SubMenu, &changeVoltageDivMenu
 	},
 
 	.elementArr[1] = {
 		" Time", Menu_ElementType_Callback,
 		OSC_voidSelectChangeTimeDivAsUpDownTraget
 	}
+};
+
+static Menu_t offsetMenu = {
+		.currentSelected = 0,
+
+		.numberOfElements = 2,
+
+		.elementArr[0] = {
+			" Ch1", Menu_ElementType_Callback, OSC_voidSelectChangeCh1Offset
+		},
+
+		.elementArr[1] = {
+			" Ch2", Menu_ElementType_Callback, OSC_voidSelectChangeCh2Offset
+		}
+};
+
+static Menu_t chOnOffMenu = {
+	.currentSelected = 0,
+
+	.numberOfElements = 4,
+
+	.elementArr[0] = {
+		" Enable Ch1", Menu_ElementType_Callback, OSC_voidEnableCh1
+	},
+
+	.elementArr[1] = {
+		" Enable Ch2", Menu_ElementType_Callback, OSC_voidEnableCh2
+	},
+
+	.elementArr[2] = {
+		" Disable Ch1", Menu_ElementType_Callback, OSC_voidDisableCh1
+	},
+
+	.elementArr[3] = {
+		" Disable Ch2", Menu_ElementType_Callback, OSC_voidDisableCh2
+	},
 };
 
 static Menu_t cursorAddMenu = {
@@ -145,7 +204,7 @@ static Menu_t cursorMenu = {
 static Menu_t mainMenu = {
 	.currentSelected = 0,
 
-	.numberOfElements = 3,
+	.numberOfElements = 5,
 
 	.elementArr[0] = {
 		" Change division", Menu_ElementType_SubMenu, &changeDivMenu
@@ -156,6 +215,14 @@ static Menu_t mainMenu = {
 	},
 
 	.elementArr[2] = {
+		" En/Dis Chx", Menu_ElementType_SubMenu, &chOnOffMenu
+	},
+
+	.elementArr[3] = {
+		" Change offset", Menu_ElementType_SubMenu, &offsetMenu
+	},
+
+	.elementArr[4] = {
 		" Change brightness", Menu_ElementType_Callback,
 		OSC_voidSelectChangeBrightness
 	}

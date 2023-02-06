@@ -37,11 +37,9 @@
 
 /**	extern buttons callback functions	*/
 extern void OSC_voidTrigPauseResume(void);
-extern void OSC_voidAutoCalibrate(void);
-extern void OSC_voidMenuButtonCallback(void);
-extern void OSC_voidStartFillingSampleBufferOnSignalRisingEdge(void);
+extern void OSC_voidAutoEnterMenuButtonCallback(void);
 
-extern volatile u16 Global_SampleBuffer[NUMBER_OF_SAMPLES];
+extern volatile u16 Global_SampleBuffer[2 * NUMBER_OF_SAMPLES];
 
 void OSC_InitRCC(void)
 {
@@ -78,48 +76,51 @@ void OSC_InitGPIO(void)
 	GPIO_voidSetPinGpoPushPull(LED_INDICATOR_PIN / 16, LED_INDICATOR_PIN % 16);
 
 	/**	Init digital inputs	**/
-	/*	auto button pin	*/
+	/*	auto/enter/menu button pin	*/
 	GPIO_voidSetPinInputPullDown(
-		BUTTON_AUTO_ENTER_PIN / 16, BUTTON_AUTO_ENTER_PIN % 16);
+		BUTTON_AUTO_ENTER_MENU_PIN / 16, BUTTON_AUTO_ENTER_MENU_PIN % 16);
 
 	/*	pause / resume button pin	*/
 	GPIO_voidSetPinInputPullDown(
 		BUTTON_PAUSE_RESUME_PIN / 16, BUTTON_PAUSE_RESUME_PIN % 16);
 
-	/*	menu button pin	*/
-	GPIO_voidSetPinInputPullDown(
-		BUTTON_CURSOR_MENU_PIN / 16, BUTTON_CURSOR_MENU_PIN % 16);
-
 	/**	Init analog inputs	**/
-	/*	init all (oscilloscope channel 1)'s ADC channels	*/
-	for (u8 i = 0; i < CHANNEL_1_NUMBER_OF_LEVELS; i++)
-	{
-		GPIO_Pin_t pin =
-			ADC_u8GetPortAndPinOfChannel(oscCh1AdcChannels[i].adcChannelNumber);
+	/*	init oscilloscope channel 1's ADC channels	*/
+	GPIO_Pin_t pin = ADC_u8GetPortAndPinOfChannel(INPUT_CH1_ADC_CHANNEL);
 
-		GPIO_voidSetPinMode(pin / 16, pin % 16, GPIO_Mode_Input_Analog);
+	GPIO_voidSetPinMode(pin / 16, pin % 16, GPIO_Mode_Input_Analog);
 
-		#if DEBUG_ON
-		trace_printf(
-			"osc_ch1 is connected to port: %d, pin: %d\n", pin / 16, pin % 16);
-		#endif
-	}
+	#if DEBUG_ON
+	trace_printf(
+		"osc_ch1 is connected to port: %d, pin: %d\n", pin / 16, pin % 16);
+	#endif
+
+	/*	init oscilloscope channel 2's ADC channels	*/
+	pin = ADC_u8GetPortAndPinOfChannel(INPUT_CH2_ADC_CHANNEL);
+
+	GPIO_voidSetPinMode(pin / 16, pin % 16, GPIO_Mode_Input_Analog);
+
+	#if DEBUG_ON
+	trace_printf(
+		"osc_ch2 is connected to port: %d, pin: %d\n", pin / 16, pin % 16);
+	#endif
 }
 
 void OSC_InitEXTI(void)
 {
 	/*	auto button	*/
-	EXTI_voidMapLine(BUTTON_AUTO_ENTER_PIN % 16, BUTTON_AUTO_ENTER_PIN / 16);
+	EXTI_voidMapLine(
+		BUTTON_AUTO_ENTER_MENU_PIN % 16, BUTTON_AUTO_ENTER_MENU_PIN / 16);
 
 	EXTI_voidSetTriggeringEdge(
-		BUTTON_AUTO_ENTER_PIN % 16, EXTI_Trigger_risingEdge);
+		BUTTON_AUTO_ENTER_MENU_PIN % 16, EXTI_Trigger_risingEdge);
 
 	EXTI_voidSetCallBack(
-		BUTTON_AUTO_ENTER_PIN % 16, OSC_voidAutoCalibrate);
+		BUTTON_AUTO_ENTER_MENU_PIN % 16, OSC_voidAutoEnterMenuButtonCallback);
 
-	EXTI_voidEnableLine(BUTTON_AUTO_ENTER_PIN % 16);
+	EXTI_voidEnableLine(BUTTON_AUTO_ENTER_MENU_PIN % 16);
 
-	EXTI_voidEnableLineInterrupt(BUTTON_AUTO_ENTER_PIN % 16);
+	EXTI_voidEnableLineInterrupt(BUTTON_AUTO_ENTER_MENU_PIN % 16);
 
 	/*	pause / resume button	*/
 	EXTI_voidMapLine(
@@ -134,19 +135,6 @@ void OSC_InitEXTI(void)
 
 	EXTI_voidEnableLineInterrupt(BUTTON_PAUSE_RESUME_PIN % 16);
 
-	/*	menu button	*/
-	EXTI_voidMapLine(BUTTON_CURSOR_MENU_PIN % 16, BUTTON_CURSOR_MENU_PIN / 16);
-
-	EXTI_voidSetTriggeringEdge(
-		BUTTON_CURSOR_MENU_PIN % 16, EXTI_Trigger_risingEdge);
-
-	EXTI_voidSetCallBack(
-		BUTTON_CURSOR_MENU_PIN % 16, OSC_voidMenuButtonCallback);
-
-	EXTI_voidEnableLine(BUTTON_CURSOR_MENU_PIN % 16);
-
-	EXTI_voidEnableLineInterrupt(BUTTON_CURSOR_MENU_PIN % 16);
-
 	/*	safe thread	*/
 	EXTI_voidSetCallBack(
 		SAFE_THREAD_EXTI_LINE,
@@ -159,86 +147,72 @@ void OSC_InitEXTI(void)
 
 void OSC_InitADC(void)
 {
-	/*	enable continuous mode	*/
-	//ADC_voidEnableContinuousConversionMode(ADC_UnitNumber_1);
+	/*	set ADC channel sample time	*/
+	ADC_voidSetSampleTime(
+		ADC_UnitNumber_1, INPUT_CH1_ADC_CHANNEL, ADC_SAMPLE_TIME);
 
-	/*	set ADC channels sample time	*/
-	for (u8 i = 0; i < CHANNEL_1_NUMBER_OF_LEVELS; i++)
-	{
-		ADC_ChannelNumber_t ch = oscCh1AdcChannels[i].adcChannelNumber;
-
-		ADC_voidSetSampleTime(
-			ADC_UnitNumber_1, ch, ADC_SAMPLE_TIME);
-	}
-
-	/*
-	 * set AWD to all channels mode (any ways only one channel is being
-	 * converted at a time
-	 */
-	ADC_voidSetAWDMode(ADC_UnitNumber_1, ADC_WatchdogMode_AllChannels);
-
-	/*	set analog watchdog threshold values	*/
-	ADC_voidSetAWDHighThreshold(ADC_UnitNumber_1, ADC_THRESHOLD_MAX);
-	ADC_voidSetAWDLowThreshold(ADC_UnitNumber_1, ADC_THRESHOLD_MIN);
-
-	/*	enable AWD	*/
-	ADC_voidEnableAWDRegularCh(ADC_UnitNumber_1);
-
-	/**
-	 * Because only one ADC channel is to be used during signal plotting (this
-	 * channel is determined depending on volts per div settings), initially
-	 * use the very first ADC channel in the ADC channel array.
-	 */
-	ADC_ChannelNumber_t ch1st = oscCh1AdcChannels[0].adcChannelNumber;
+	ADC_voidSetSampleTime(
+		ADC_UnitNumber_2, INPUT_CH2_ADC_CHANNEL, ADC_SAMPLE_TIME);
 
 	/*	write channel in regular sequence	*/
 	ADC_voidSetSequenceRegular(
-		ADC_UnitNumber_1, ADC_RegularSequenceNumber_1, ch1st);
+		ADC_UnitNumber_1, ADC_RegularSequenceNumber_1, INPUT_CH1_ADC_CHANNEL);
+
+	ADC_voidSetSequenceRegular(
+		ADC_UnitNumber_2, ADC_RegularSequenceNumber_1, INPUT_CH2_ADC_CHANNEL);
 
 	/*
 	 * set regular sequence len to 1. (as only one channel is to be converted)
 	 */
 	ADC_voidSetSequenceLenRegular(ADC_UnitNumber_1, 1);
 
+	ADC_voidSetSequenceLenRegular(ADC_UnitNumber_2, 1);
+
 	/*	set regular channels trigger to TIM2CC2	*/
 	ADC_voidSetExternalEventRegular(
 		ADC_UnitNumber_1, ADC_ExternalEventRegular_TIM3TRGO);
 
+	ADC_voidSetExternalEventRegular(
+		ADC_UnitNumber_2, ADC_ExternalEventRegular_TIM3TRGO);
+
 	/*	enable conversion triggering on external event	*/
 	ADC_voidEnableExternalTriggerRegular(ADC_UnitNumber_1);
+
+	ADC_voidEnableExternalTriggerRegular(ADC_UnitNumber_2);
 
 	/*	Enable DMA request at end of conversion	*/
 	ADC_voidEnableDMA(ADC_UnitNumber_1);
 
+	/*	enable regular simultaneous mode	*/
+	ADC_voidSetDualMode(ADC_DualMode_RegularSimultaneousOnly);
+
 	/*	power on	*/
 	ADC_voidEnablePower(ADC_UnitNumber_1);
 
+	ADC_voidEnablePower(ADC_UnitNumber_2);
+
 	/*	calibrate	*/
 	ADC_voidStartCalibration(ADC_UnitNumber_1);
+	ADC_voidStartCalibration(ADC_UnitNumber_2);
 
 	ADC_voidWaitCalibration(ADC_UnitNumber_1);
-
-	/*	trigger start of conversion	*/
-	//ADC_voidStartSWConversionRegular(ADC_UnitNumber_1);
+	ADC_voidWaitCalibration(ADC_UnitNumber_2);
 }
 
 void OSC_InitTIM(void)
 {
 	/*	init frequency measurement timer	*/
-	u64 maxMeasurableFreqmHz;
-	/*	start frequency measurement	*/
 	TIM_voidInitFreqAndDutyMeasurement(
-		FREQ_MEASURE_TIMER_UNIT_NUMBER,
-		FREQ_MEASURE_TIMER_UNIT_AFIO_MAP,
-		FREQ_MEASURE_MIN_FREQ_MILLI_HZ,
-		&maxMeasurableFreqmHz,
-		NULL, NULL);
+		FREQ_MEASURE_CH1_TIMER_UNIT_NUMBER,
+		FREQ_MEASURE_CH1_TIMER_UNIT_AFIO_MAP,
+		FREQ_MEASURE_CH1_MIN_FREQ_MILLI_HZ,
+		NULL, NULL, NULL);
 
-	#if DEBUG_ON
-	trace_printf(
-		"maximum measurable frequency is: %dHz\n",
-		(u32)(maxMeasurableFreqmHz / 1000));
-	#endif
+	TIM_voidInitFreqAndDutyMeasurement(
+		FREQ_MEASURE_CH2_TIMER_UNIT_NUMBER,
+		FREQ_MEASURE_CH2_TIMER_UNIT_AFIO_MAP,
+		FREQ_MEASURE_CH2_MIN_FREQ_MILLI_HZ,
+		NULL, NULL, NULL);
 
 	/**	init ADC sampling timer	**/
 	/*	disable slave mode (use clk_int as clk source)	*/
@@ -283,57 +257,35 @@ void OSC_InitDMA(void)
 	/*	enable DMA1 clock (if not enabled)	*/
 	DMA_voidEnableRCCClock(DMA_UnitNumber_1);
 
-	const DMA_ChannelNumber_t dmaChannels[] = {
-		FIRST_LINE_SEGMENT_DMA_CHANNEL,
-		SECOND_LINE_SEGMENT_DMA_CHANNEL,
-		THIRD_LINE_SEGMENT_DMA_CHANNEL
-	};
-
-	for (u8 i = 0; i < 3; i++)
-	{
-		/*	Source size is 16-bit	*/
-		DMA_voidSelectPeripheralSize(
-			DMA_UnitNumber_1, dmaChannels[i], DMA_Size_16bits);
-
-		/*	Destination size is 16-bit	*/
-		DMA_voidSelectMemorySize(
-			DMA_UnitNumber_1, dmaChannels[i], DMA_Size_16bits);
-
-		/*
-		 * set direction to read peripheral
-		 * (i.e.: the memory location of color data)
-		 */
-		DMA_voidSelectDataTransferDirection(
-			DMA_UnitNumber_1, dmaChannels[i], DMA_Direction_ReadPeripheral);
-
-		/*	Enable memory increment	*/
-		DMA_voidEnableMemoryIncrement(DMA_UnitNumber_1, dmaChannels[i]);
-
-		/*	Enable mem to mem mode	*/
-		DMA_voidEnableMemToMemMode(DMA_UnitNumber_1, dmaChannels[i]);
-	}
-
-	/*	set source address of each of the line segment drawing DMA channels	*/
-	DMA_voidSetPeripheralAddress(
-		DMA_UnitNumber_1, FIRST_LINE_SEGMENT_DMA_CHANNEL,
-		(void*)&LCD_BACKGROUND_COLOR_U16);
-
-	DMA_voidSetPeripheralAddress(
-		DMA_UnitNumber_1, SECOND_LINE_SEGMENT_DMA_CHANNEL,
-		(void*)&LCD_MAIN_DRAWING_COLOR_U16);
-
-	DMA_voidSetPeripheralAddress(
-		DMA_UnitNumber_1, THIRD_LINE_SEGMENT_DMA_CHANNEL,
-		(void*)&LCD_BACKGROUND_COLOR_U16);
-
-	/**	init ADC end of conversion DMA transfer to sample buffer	**/
 	/*	Source size is 16-bit	*/
 	DMA_voidSelectPeripheralSize(
-		DMA_UnitNumber_1, ADC_DMA_CHANNEL, DMA_Size_16bits);
+		DMA_UnitNumber_1, LINE_SEGMENT_DMA_CHANNEL, DMA_Size_16bits);
 
 	/*	Destination size is 16-bit	*/
 	DMA_voidSelectMemorySize(
-		DMA_UnitNumber_1, ADC_DMA_CHANNEL, DMA_Size_16bits);
+		DMA_UnitNumber_1, LINE_SEGMENT_DMA_CHANNEL, DMA_Size_16bits);
+
+	/*
+	 * set direction to read peripheral
+	 * (i.e.: the memory location of color data)
+	 */
+	DMA_voidSelectDataTransferDirection(
+		DMA_UnitNumber_1, LINE_SEGMENT_DMA_CHANNEL, DMA_Direction_ReadPeripheral);
+
+	/*	Enable memory increment	*/
+	DMA_voidEnableMemoryIncrement(DMA_UnitNumber_1, LINE_SEGMENT_DMA_CHANNEL);
+
+	/*	Enable mem to mem mode	*/
+	DMA_voidEnableMemToMemMode(DMA_UnitNumber_1, LINE_SEGMENT_DMA_CHANNEL);
+
+	/**	init ADC end of conversion DMA transfer to sample buffer	**/
+	/*	Source size is 32-bit	*/
+	DMA_voidSelectPeripheralSize(
+		DMA_UnitNumber_1, ADC_DMA_CHANNEL, DMA_Size_32bits);
+
+	/*	Destination size is 32-bit	*/
+	DMA_voidSelectMemorySize(
+		DMA_UnitNumber_1, ADC_DMA_CHANNEL, DMA_Size_32bits);
 
 	/*	set direction to read peripheral	*/
 	DMA_voidSelectDataTransferDirection(
