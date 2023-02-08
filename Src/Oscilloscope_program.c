@@ -46,50 +46,58 @@
 #include "Oscilloscope_interface.h"
 
 /*******************************************************************************
- * Extern global variables (from private.c file):
+ * Extern global variables:
  ******************************************************************************/
 extern volatile u32 stkTicksPerSecond;
 
 extern volatile TFT2_t Global_LCD;
+extern volatile u16 Global_PixArr[32 * 128];
 extern volatile u16* Global_ImgBufferArr[2];
+
+extern volatile u16 Global_SampleBuffer[2 * NUMBER_OF_SAMPLES];
+
+extern volatile char Global_Str[128];
+extern volatile u16 Global_InfoImg[12 * 5 * 8];
+
 extern volatile u8 Global_Ch1PeakToPeakValueInCurrentFrame;
 extern volatile u8 Global_Ch1MinValueInCurrentFrame;
 extern volatile u8 Global_Ch1MaxValueInCurrentFrame;
+
 extern volatile u8 Global_Ch2PeakToPeakValueInCurrentFrame;
 extern volatile u8 Global_Ch2MinValueInCurrentFrame;
 extern volatile u8 Global_Ch2MaxValueInCurrentFrame;
+
 extern volatile u32 Global_CurrentCh1MicroVoltsPerPix;
 extern volatile u32 Global_CurrentCh2MicroVoltsPerPix;
 extern volatile u64 Global_CurrentNanoSecondsPerPix;
+
 extern volatile b8 Global_Paused;
+
 extern volatile OSC_Up_Down_Target_t Global_UpDownTarget;
+
 extern volatile b8 Global_IsMenuOpen;
-extern volatile u16 Global_SampleBuffer[2 * NUMBER_OF_SAMPLES];
-extern volatile char Global_Str[128];
-extern volatile u16 Global_InfoImg[12 * 5 * 8];
-//extern volatile u16 Global_PixArr[2 * LINES_PER_IMAGE_BUFFER * 128];
-extern volatile u16 Global_PixArr[32 * 128];
+
 extern volatile b8 Global_IsCh1Enabled;
 extern volatile b8 Global_IsCh2Enabled;
+
 extern volatile u8 Global_LastRead1;
 extern volatile u8 Global_LastRead2;
+
 extern volatile u8 Global_Smaller1;
 extern volatile u8 Global_Larger1;
+
 extern volatile u8 Global_Smaller2;
 extern volatile u8 Global_Larger2;
-extern volatile s8 Global_Offset1;
-extern volatile s8 Global_Offset2;
+
+extern volatile s32 Global_Offset1MicroVolts;
+extern volatile s32 Global_Offset2MicroVolts;
+
 extern volatile OSC_RunningMode_t Global_CurrentRunningMode;
 
 extern volatile OSC_Cursor_t Cursor_v1;
 extern volatile OSC_Cursor_t Cursor_v2;
 extern volatile OSC_Cursor_t Cursor_t1;
 extern volatile OSC_Cursor_t Cursor_t2;
-
-void OSC_voidEnterMathMode(void)
-{
-
-}
 
 /*******************************************************************************
  * Div. control:
@@ -206,6 +214,9 @@ void OSC_voidDecrementTimeDiv(void)
 	}
 }
 
+/*******************************************************************************
+ * Brightness control:
+ ******************************************************************************/
 void OSC_voidIncrementBrightness(void)
 {
 	u32 brightness = TFT2_u16GetBrightness((TFT2_t*)&Global_LCD);
@@ -216,38 +227,6 @@ void OSC_voidIncrementBrightness(void)
 		brightness = POW_TWO(16) - 1;
 
 	TFT2_voidSetBrightness((TFT2_t*)&Global_LCD, brightness);
-}
-
-void OSC_voidIncrementCh1Offset(void)
-{
-	if (Global_IsCh1Enabled)
-	{
-		Global_Offset1++;
-	}
-}
-
-void OSC_voidIncrementCh2Offset(void)
-{
-	if (Global_IsCh2Enabled)
-	{
-		Global_Offset2++;
-	}
-}
-
-void OSC_voidDecrementCh1Offset(void)
-{
-	if (Global_IsCh1Enabled)
-	{
-		Global_Offset1--;
-	}
-}
-
-void OSC_voidDecrementCh2Offset(void)
-{
-	if (Global_IsCh2Enabled)
-	{
-		Global_Offset2--;
-	}
 }
 
 void OSC_voidDecrementBrightness(void)
@@ -261,7 +240,65 @@ void OSC_voidDecrementBrightness(void)
 }
 
 /*******************************************************************************
- * ISR's:
+ * Offset control:
+ ******************************************************************************/
+void OSC_voidIncrementCh1Offset(void)
+{
+	if (Global_IsCh1Enabled)
+	{
+		Global_Offset1MicroVolts += Global_CurrentCh1MicroVoltsPerPix;
+	}
+}
+
+void OSC_voidIncrementCh2Offset(void)
+{
+	if (Global_IsCh2Enabled)
+	{
+		Global_Offset2MicroVolts += Global_CurrentCh2MicroVoltsPerPix;
+	}
+}
+
+void OSC_voidDecrementCh1Offset(void)
+{
+	if (Global_IsCh1Enabled)
+	{
+		Global_Offset1MicroVolts -= Global_CurrentCh1MicroVoltsPerPix;
+	}
+}
+
+void OSC_voidDecrementCh2Offset(void)
+{
+	if (Global_IsCh2Enabled)
+	{
+		Global_Offset2MicroVolts -= Global_CurrentCh2MicroVoltsPerPix;
+	}
+}
+
+/*******************************************************************************
+ * channel on/off control:
+ ******************************************************************************/
+void OSC_voidEnableCh1(void)
+{
+	Global_IsCh1Enabled = true;
+}
+
+void OSC_voidEnableCh2(void)
+{
+	Global_IsCh2Enabled = true;
+}
+
+void OSC_voidDisableCh1(void)
+{
+	Global_IsCh1Enabled = false;
+}
+
+void OSC_voidDisableCh2(void)
+{
+	Global_IsCh2Enabled = false;
+}
+
+/*******************************************************************************
+ * Button / rotary encoder callbacks:
  ******************************************************************************/
 void OSC_voidTrigPauseResume(void)
 {
@@ -471,31 +508,9 @@ void OSC_voidAutoEnterMenuButtonCallback(void)
 }
 
 /*******************************************************************************
- * channel on/off:
+ * Sampling functions and macros:
  ******************************************************************************/
-void OSC_voidEnableCh1(void)
-{
-	Global_IsCh1Enabled = true;
-}
-
-void OSC_voidEnableCh2(void)
-{
-	Global_IsCh2Enabled = true;
-}
-
-void OSC_voidDisableCh1(void)
-{
-	Global_IsCh1Enabled = false;
-}
-
-void OSC_voidDisableCh2(void)
-{
-	Global_IsCh2Enabled = false;
-}
-/*******************************************************************************
- * Main thread functions:
- ******************************************************************************/
-inline void OSC_voidWaitForSignalRisingEdge(void)
+void OSC_voidWaitForSignalRisingEdge(void)
 {
 	/*	normally sync on ch1 input, unless disabled, then sync on ch2 input	*/
 	u8 syncTimUnit;
@@ -516,8 +531,12 @@ inline void OSC_voidWaitForSignalRisingEdge(void)
 
 	while(!TIM_b8GetStatusFlag(syncTimUnit, TIM_Status_CC1))
 	{
-		if (STK_u64GetElapsedTicks() - startTime > stkTicksPerSecond / 10)
+		if (STK_u64GetElapsedTicks() - startTime > stkTicksPerSecond / 2)
+		{
 			break;
+			volatile u32 f99 = 1;
+			f99++;
+		}
 	}
 }
 
@@ -649,6 +668,9 @@ void OSC_voidInterpolate(void)
 	}
 }
 
+/*******************************************************************************
+ * Drawing functions and macros:
+ ******************************************************************************/
 /*
 * Eqn.:
 * "v_ch" is the very main input that user can handle.
@@ -664,18 +686,23 @@ void OSC_voidInterpolate(void)
 * 		 	(10 * pixels_per_volt * v_adc) / 4096 +
 * 		 	64							[pixels]
 */
-#define GET_CH1_V_IN_PIXELS(v_adc)                                           \
-(	                                                                   	     \
-	5 * 1000000 / Global_CurrentCh1MicroVoltsPerPix -						 \
-	(10000000 * (s64)(v_adc)) / Global_CurrentCh1MicroVoltsPerPix / 4096 +   \
-	63 + Global_Offset1                                                      \
+#define GET_CH1_V_IN_PIXELS(v_adc)                                            \
+(	                                                                   	      \
+	(5 * 1000000 + Global_Offset1MicroVolts) /                                \
+	Global_CurrentCh1MicroVoltsPerPix -						                  \
+	(10000000 * (s64)(v_adc)) / Global_CurrentCh1MicroVoltsPerPix / 4096 + 63 	                                                      \
 )
 
-#define GET_CH2_V_IN_PIXELS(v_adc)                                           \
-(	                                                                   	     \
-	5 * 1000000 / Global_CurrentCh2MicroVoltsPerPix -						 \
-	(10000000 * (s64)(v_adc)) / Global_CurrentCh2MicroVoltsPerPix / 4096 +   \
-	63 + Global_Offset2                                                      \
+#define GET_CH2_V_IN_PIXELS(v_adc)                                            \
+(	                                                                   	      \
+	(5 * 1000000 + Global_Offset2MicroVolts) /                                \
+	Global_CurrentCh2MicroVoltsPerPix -						                  \
+	(10000000 * (s64)(v_adc)) / Global_CurrentCh2MicroVoltsPerPix / 4096 + 63 	                                                      \
+)
+
+#define GET_V_IN_MICRO_VOLTS(v_adc)                 \
+(	                                                \
+	5 * 1000000 - (10000000 * (s64)(v_adc)) / 4096	\
 )
 
 #define SORT_VALUES(new, smaller, larger)             \
@@ -795,6 +822,80 @@ void OSC_voidInterpolate(void)
 	}                                                       \
 }
 
+#define CONVERT_UV_TO_PIX_CH1(uv)((uv) / (s32)Global_CurrentCh1MicroVoltsPerPix)
+
+#define CONVERT_UV_TO_PIX_CH2(uv)((uv) / (s32)Global_CurrentCh2MicroVoltsPerPix)
+
+#define DRAW_OFFSET_POINTER_CH1(imgBufferIndex)							\
+{                                                                       \
+	/*	if channel is enabled and offset is in displayable range	*/  \
+	if (                                                                \
+		Global_IsCh1Enabled &&                                          \
+		CONVERT_UV_TO_PIX_CH1(Global_Offset1MicroVolts) + 63 >          \
+		OFFSET_POINTER_LEN &&                                           \
+		CONVERT_UV_TO_PIX_CH1(Global_Offset1MicroVolts) + 63 <          \
+		128 - OFFSET_POINTER_LEN                                        \
+	)                                                                   \
+	{                                                                   \
+		u8 start =                                                      \
+			CONVERT_UV_TO_PIX_CH1(Global_Offset1MicroVolts) + 63 -      \
+			OFFSET_POINTER_LEN / 2;                                     \
+		u8 n = OFFSET_POINTER_LEN;                                      \
+		for (u8 j = 0; j < OFFSET_POINTER_LEN / 2 + 1; j++)             \
+		{                                                               \
+			for (u8 k = start; k < start + n; k++)                      \
+			{                                                           \
+				Global_ImgBufferArr[(imgBufferIndex)][128 * j + k] =    \
+				LCD_OFFSET_POINTER1_DRAWING_COLOR_U16;                  \
+			}                                                           \
+			start++;                                                    \
+			n -= 2;                                                     \
+		}                                                               \
+	}                                                                   \
+}
+
+#define DRAW_OFFSET_POINTER_CH2(imgBufferIndex)							\
+{                                                                       \
+	/*	if channel is enabled and offset is in displayable range	*/  \
+	if (                                                                \
+		Global_IsCh2Enabled &&                                          \
+		CONVERT_UV_TO_PIX_CH2(Global_Offset2MicroVolts) + 63 >          \
+		OFFSET_POINTER_LEN &&                                           \
+		CONVERT_UV_TO_PIX_CH2(Global_Offset2MicroVolts) + 63 <          \
+		128 - OFFSET_POINTER_LEN                                        \
+	)                                                                   \
+	{                                                                   \
+		u8 start =                                                      \
+			CONVERT_UV_TO_PIX_CH2(Global_Offset2MicroVolts) + 63 -      \
+			OFFSET_POINTER_LEN / 2;                                     \
+		u8 n = OFFSET_POINTER_LEN;                                      \
+		for (u8 j = 0; j < OFFSET_POINTER_LEN / 2 + 1; j++)             \
+		{                                                               \
+			for (u8 k = start; k < start + n; k++)                      \
+			{                                                           \
+				Global_ImgBufferArr[(imgBufferIndex)][128 * j + k] =    \
+				LCD_OFFSET_POINTER2_DRAWING_COLOR_U16;                  \
+			}                                                           \
+			start++;                                                    \
+			n -= 2;                                                     \
+		}                                                               \
+	}                                                                   \
+}
+
+void OSC_voidSetDisplayBoundariesForSignalArea(void)
+{
+	/*	set screen boundaries for full signal image area	*/
+	TFT2_SET_X_BOUNDARIES(&Global_LCD, 0, 127);
+	TFT2_SET_Y_BOUNDARIES(&Global_LCD, 0, NUMBER_OF_SAMPLES - 1);
+
+	/*	start data writing mode on screen	*/
+	TFT2_WRITE_CMD(&Global_LCD, TFT_CMD_MEM_WRITE);
+	TFT2_ENTER_DATA_MODE(&Global_LCD);
+}
+
+/*******************************************************************************
+ * Normal mode frame generation:
+ ******************************************************************************/
 void OSC_voidDrawNormalModeFrame(void)
 {
 	/*	data is to be extracted from sample buffers to these two	*/
@@ -932,6 +1033,13 @@ void OSC_voidDrawNormalModeFrame(void)
 				imgBufferIndex, Cursor_v2.pos, LCD_CURSOR2_DRAWING_COLOR_U16);
 		}
 
+		/*	draw offset pointer (case first segment of the frame only)	*/
+		if (readCount == NUMBER_OF_SAMPLES / NUMBER_OF_IMAGE_BUFFERS_PER_FRAME)
+		{
+			DRAW_OFFSET_POINTER_CH1(imgBufferIndex);
+			DRAW_OFFSET_POINTER_CH2(imgBufferIndex);
+		}
+
 		/*	Send buffer to TFT using DMA (Internally waits for DMA TC)	*/
 		TFT2_voidSendPixels(
 			(TFT2_t*)&Global_LCD, (u16*)Global_ImgBufferArr[imgBufferIndex],
@@ -956,6 +1064,54 @@ void OSC_voidDrawNormalModeFrame(void)
 		Global_Ch2MaxValueInCurrentFrame - Global_Ch2MinValueInCurrentFrame;
 }
 
+/*******************************************************************************
+ * X-Y mode frame generation:
+ ******************************************************************************/
+#define CHOP_X_VALUE(xVal)                      \
+{                                               \
+	if ((xVal) < 0)                             \
+		(xVal) = 0;                             \
+                                                \
+	else if ((xVal) >= NUMBER_OF_SAMPLES)       \
+		(xVal) = NUMBER_OF_SAMPLES - 1;         \
+}
+
+#define CHOP_Y_VALUE(yVal)                      \
+{                                               \
+	if ((yVal) < 0)                             \
+		(yVal) = 0;                             \
+                                                \
+	else if ((yVal) >= 128)      			    \
+		(yVal) = 128 - 1;       			    \
+}
+
+void OSC_voidDrawXYModeFrame(void)
+{
+	/*	clear display (fill with BG color)	*/
+
+	for (u8 i = 0; i < NUMBER_OF_SAMPLES; i++)
+	{
+		s32 xCurrent = GET_CH1_V_IN_PIXELS(Global_SampleBuffer[2 * i]);
+		s32 yCurrent = GET_CH1_V_IN_PIXELS(Global_SampleBuffer[2 * i + 1]);
+
+		/*	limit current readings to displayable range (chop readings)	*/
+		CHOP_X_VALUE(xCurrent);
+		CHOP_Y_VALUE(yCurrent);
+
+		/*
+		 * connect {xCurrent, yCurrent}, {Global_LastRead1, Global_LastRead2}
+		 * by a line.
+		 */
+
+		/*	update {Global_LastRead1, Global_LastRead2}	*/
+		Global_LastRead1 = xCurrent;
+		Global_LastRead2 = yCurrent;
+	}
+}
+
+/*******************************************************************************
+ * Main thread super-loop:
+ ******************************************************************************/
 void OSC_voidMainSuperLoop(void)
 {
 	/*	last time info was drawn. (timestamp)	*/
@@ -1006,17 +1162,9 @@ void OSC_voidMainSuperLoop(void)
 	}
 }
 
-void OSC_voidSetDisplayBoundariesForSignalArea(void)
-{
-	/*	set screen boundaries for full signal image area	*/
-	TFT2_SET_X_BOUNDARIES(&Global_LCD, 0, 127);
-	TFT2_SET_Y_BOUNDARIES(&Global_LCD, 0, NUMBER_OF_SAMPLES - 1);
-
-	/*	start data writing mode on screen	*/
-	TFT2_WRITE_CMD(&Global_LCD, TFT_CMD_MEM_WRITE);
-	TFT2_ENTER_DATA_MODE(&Global_LCD);
-}
-
+/*******************************************************************************
+ * Info drawing functions:
+ ******************************************************************************/
 void OSC_voidGetNumberPritableVersion(
 	volatile u64 valInNano, u32* valInteger, u32* valFraction, char* unitPrefix)
 {
@@ -1258,6 +1406,106 @@ void OSC_voidDrawInfo()
 	OSC_voidSetDisplayBoundariesForSignalArea();
 }
 
+/*******************************************************************************
+ * Auto calibration:
+ ******************************************************************************/
+typedef enum{
+	OSC_Channel_1,
+	OSC_Channel_2
+}OSC_Channel_t;
+
+void OSC_voidFindMaxAndMinOfChxInTwoSeconds(
+	OSC_Channel_t ch, u16* maxPtr, u16* minPtr)
+{
+	/*	set external trigger to be SWSTART	*/
+	ADC_voidSetExternalEventRegular(
+		ADC_UnitNumber_1, ADC_ExternalEventRegular_SWSTART);
+
+	/*	start new conversion	*/
+	ADC_voidStartSWConversionRegular(ADC_UnitNumber_1);
+
+	/*	set max and min to the last converted value	*/
+	*maxPtr = (u16)(ADC_u32GetDataRegularDual() >> (16 * ch));
+	*minPtr = *maxPtr;
+
+	/*	start time counting	*/
+	u64 startTime = STK_u64GetElapsedTicks();
+
+	/*	while 2 seconds have not yet passed:	*/
+	while(STK_u64GetElapsedTicks() - startTime < 2000ul * 72000ul)
+	{
+		/*	wait for conversion end	*/
+		while(!ADC_b8GetStatusFlag(ADC_UnitNumber_1, ADC_StatusFlag_EOC));
+
+		/*	take the newly converted value	*/
+		u16 newReading = (u16)(ADC_u32GetDataRegularDual() >> (16 * ch));;
+
+		/*	start next conversion	*/
+		ADC_voidStartSWConversionRegular(ADC_UnitNumber_1);
+
+		/*	if larger than max, make it max	*/
+		WRITE_IF_LARGER(*maxPtr, newReading);
+
+		/*	if smaller than min, make it min	*/
+		WRITE_IF_SMALLER(*minPtr, newReading);
+	}
+
+	/*	set external trigger back to be TIM3TRGO	*/
+	ADC_voidSetExternalEventRegular(
+		ADC_UnitNumber_1, ADC_ExternalEventRegular_TIM3TRGO);
+}
+
+void OSC_voidFindMaxAndMinOfBothChannelsInTwoSeconds(
+	u16* max1Ptr, u16* min1Ptr, u16* max2Ptr, u16* min2Ptr)
+{
+	/*	set external trigger to be SWSTART	*/
+	ADC_voidSetExternalEventRegular(
+		ADC_UnitNumber_1, ADC_ExternalEventRegular_SWSTART);
+
+	/*	enable continuous mode	*/
+	ADC_voidEnableContinuousConversionMode(ADC_UnitNumber_1);
+	ADC_voidEnableContinuousConversionMode(ADC_UnitNumber_2);
+
+	/*	start conversion	*/
+	ADC_voidStartSWConversionRegular(ADC_UnitNumber_1);
+
+	/*	set max and min to the last converted value	*/
+	u32 bothChannelsConverted = ADC_u32GetDataRegularDual();
+	*max1Ptr = (u16)bothChannelsConverted;
+	*min1Ptr = *max1Ptr;
+
+	*max2Ptr = (u16)(bothChannelsConverted >> 16);
+	*min2Ptr = *max2Ptr;
+
+	/*	start time counting	*/
+	u64 startTime = STK_u64GetElapsedTicks();
+
+	/*	while 2 seconds have not yet passed:	*/
+	while(STK_u64GetElapsedTicks() - startTime < 2000ul * 72000ul)
+	{
+		/*	take the newly converted value	*/
+		bothChannelsConverted = ADC_u32GetDataRegularDual();
+		u16 ch1Converted = (u16)bothChannelsConverted;
+		u16 ch2Converted = (u16)(bothChannelsConverted >> 16);
+
+		/*	if larger than max, make it max	*/
+		WRITE_IF_LARGER(*max1Ptr, ch1Converted);
+		WRITE_IF_LARGER(*max2Ptr, ch2Converted);
+
+		/*	if smaller than min, make it min	*/
+		WRITE_IF_SMALLER(*min1Ptr, ch1Converted);
+		WRITE_IF_SMALLER(*min2Ptr, ch2Converted);
+	}
+
+	/*	disable continuous mode	*/
+	ADC_voidEnableSingleConversionMode(ADC_UnitNumber_1);
+	ADC_voidEnableSingleConversionMode(ADC_UnitNumber_2);
+
+	/*	set external trigger back to be TIM3TRGO	*/
+	ADC_voidSetExternalEventRegular(
+		ADC_UnitNumber_1, ADC_ExternalEventRegular_TIM3TRGO);
+}
+
 void OSC_voidAutoCalibrate(void)
 {
 	static u64 lastPressTime = 0;
@@ -1269,28 +1517,93 @@ void OSC_voidAutoCalibrate(void)
 		return;
 	}
 
-	/** Time calibration	**/
+	/**	Voltage Div. calibration	**/
 	/*
-	 * Get signal frequency.
-	 * Wait for CC1IF to raise, as it may be cleared by a previous frequency
-	 * read, which would lead to a fault measurement of a zero frequency.
+	 * run enabled oscilloscope channels @ maximum speed for 2 seconds,
+	 * to find the maximum and the minimum readings of them during this time
+	 * period.
 	 */
-	u64 freqmHz = 0;
-	/*
-	 * if CC1IF was not raised before reading CCR1, then no transition have
-	 * not happened. i.e.: freq = 0
-	 */
-	u64 startTime = STK_u64GetElapsedTicks();
+	u16 max1, min1, max2, min2;
+
+	OSC_voidFindMaxAndMinOfBothChannelsInTwoSeconds(
+		&max1, &min1, &max2, &min2);
+
+	/*	convert these values to micro volts	*/
+	s64 max1Uv = GET_V_IN_MICRO_VOLTS(min1);
+	s64 min1Uv = GET_V_IN_MICRO_VOLTS(max1);
+	s64 max2Uv = GET_V_IN_MICRO_VOLTS(min2);
+	s64 min2Uv = GET_V_IN_MICRO_VOLTS(max2);
 
 	/*
-	 * normally calibrate on ch1 input, unless disabled, then sync on ch2
-	 * input
+	 * volts per pixel = (v_max - v_min) / (128 * 70%)
+	 * (The 90% means that the signal would take only 70% of the display, which
+	 * is nicer to user that fully taking the screen)
+	 *
+	 * (Min is 100mV per whole display, can be later changed)
 	 */
+	Global_CurrentCh1MicroVoltsPerPix = (max1Uv - min1Uv) / 90;
+	if (Global_CurrentCh1MicroVoltsPerPix <= 100000 / 128)
+		Global_CurrentCh1MicroVoltsPerPix = 100000 / 128;
+
+	Global_CurrentCh2MicroVoltsPerPix = (max2Uv - min2Uv) / 90;
+	if (Global_CurrentCh2MicroVoltsPerPix <= 100000 / 128)
+		Global_CurrentCh2MicroVoltsPerPix = 100000 / 128;
+
+	/*	channel offset in micro volts = - avg{v_max, v_min}	*/
+	Global_Offset1MicroVolts = - (max1Uv + min1Uv) / 2;
+	Global_Offset2MicroVolts = - (max2Uv + min2Uv) / 2;
+
+	/*	update global min, max and vpp	*/
+	Global_Ch1MaxValueInCurrentFrame = GET_CH1_V_IN_PIXELS(min1);
+	Global_Ch1MinValueInCurrentFrame = GET_CH1_V_IN_PIXELS(max1);
+	Global_Ch1PeakToPeakValueInCurrentFrame =
+		Global_Ch1MaxValueInCurrentFrame - Global_Ch1MinValueInCurrentFrame;
+
+	Global_Ch2MaxValueInCurrentFrame = GET_CH2_V_IN_PIXELS(min2);
+	Global_Ch2MinValueInCurrentFrame = GET_CH2_V_IN_PIXELS(max2);
+	Global_Ch2PeakToPeakValueInCurrentFrame =
+		Global_Ch2MaxValueInCurrentFrame - Global_Ch2MinValueInCurrentFrame;
+
+	/** Time calibration	**/
 	u8 syncTimUnit;
-	if (Global_IsCh1Enabled)
+
+	/*
+	 * if both channels were enabled, calibrate time on that of larger peak to
+	 * peak voltage.
+	 */
+	if (Global_IsCh1Enabled && Global_IsCh2Enabled)
+	{
+		u32 vpp1 =
+			Global_Ch1PeakToPeakValueInCurrentFrame *
+			Global_CurrentCh1MicroVoltsPerPix;
+
+		u32 vpp2 =
+			Global_Ch2PeakToPeakValueInCurrentFrame *
+			Global_CurrentCh2MicroVoltsPerPix;
+
+		if (vpp1 > vpp2)
+			syncTimUnit = FREQ_MEASURE_CH1_TIMER_UNIT_NUMBER;
+		else
+			syncTimUnit = FREQ_MEASURE_CH2_TIMER_UNIT_NUMBER;
+	}
+
+	/*	else if only ch1 was enabled, calibrate time on it	*/
+	else if (Global_IsCh1Enabled)
 		syncTimUnit = FREQ_MEASURE_CH1_TIMER_UNIT_NUMBER;
+
+	/*	else if only ch2 was enabled, calibrate time on it	*/
 	else
 		syncTimUnit = FREQ_MEASURE_CH2_TIMER_UNIT_NUMBER;
+
+	/*
+	 * Get signal frequency.
+	 * Wait for CC1IF to raise (using timeout: "FREQ_MEASURE_TIMEOUT_MS"),
+	 * as it may be cleared by a previous frequency read, which would lead to
+	 * a fault measurement of a zero frequency.
+	 */
+	volatile u64 freqmHz = 0;
+
+u64 startTime = STK_u64GetElapsedTicks();
 
 	while(!TIM_GET_STATUS_FLAG(syncTimUnit, TIM_Status_CC1))
 	{
@@ -1301,13 +1614,17 @@ void OSC_voidAutoCalibrate(void)
 			break;
 	}
 
+	/*
+	 * if CC1IF was not raised before reading CCR1, then no transition have
+	 * not happened. i.e.: freq = 0 (no change)
+	 */
 	if (TIM_GET_STATUS_FLAG(syncTimUnit, TIM_Status_CC1))
 		freqmHz =
 			TIM_u64GetFrequencyMeasured(syncTimUnit);
 
 	/*
 	 * set time per pix such that user can see 3 periods of the signal in one
-	 * frame.
+	 * frame. (only if frequency is larger than zero)
 	 * eqn: time_per_pix = 3 * T / N_SAMPLES,
 	 * where T is the periodic time of the signal.
 	 */
@@ -1317,14 +1634,6 @@ void OSC_voidAutoCalibrate(void)
 		Global_CurrentNanoSecondsPerPix =
 			3e12 / freqmHz / NUMBER_OF_SAMPLES;
 
-	/**	Gain and voltage calibration	**/
-
-	Global_CurrentCh1MicroVoltsPerPix =
-		(10000 * 1000ul) / 128;
-
-	Global_CurrentCh2MicroVoltsPerPix =
-		(10000 * 1000ul) / 128;
-
-	/*	debouncing timestamp	*/
+	/**	debouncing timestamp	**/
 	lastPressTime = STK_u64GetElapsedTicks();
 }

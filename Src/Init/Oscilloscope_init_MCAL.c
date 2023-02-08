@@ -59,6 +59,9 @@ void OSC_InitRCC(void)
 
 	/*	TIM	*/
 	RCC_voidEnablePeripheralClk(RCC_Bus_APB1, RCC_PERIPHERAL_TIM3);
+
+	/*	DAC	*/
+	RCC_voidEnablePeripheralClk(RCC_Bus_APB1, RCC_PERIPHERAL_DAC);
 }
 
 void OSC_InitSysTick(void)
@@ -208,11 +211,20 @@ void OSC_InitTIM(void)
 		FREQ_MEASURE_CH1_MIN_FREQ_MILLI_HZ,
 		NULL, NULL, NULL);
 
+	TIM_voidSetInputCaptureFilter(
+		FREQ_MEASURE_CH1_TIMER_UNIT_NUMBER, TIM_Channel_1,
+		TIM_SamplingMode_F_DeadTimeBy32_N_8);
+
 	TIM_voidInitFreqAndDutyMeasurement(
 		FREQ_MEASURE_CH2_TIMER_UNIT_NUMBER,
 		FREQ_MEASURE_CH2_TIMER_UNIT_AFIO_MAP,
 		FREQ_MEASURE_CH2_MIN_FREQ_MILLI_HZ,
 		NULL, NULL, NULL);
+
+	TIM_voidSetInputCaptureFilter(
+		FREQ_MEASURE_CH2_TIMER_UNIT_NUMBER, TIM_Channel_1,
+		TIM_SamplingMode_F_DeadTimeBy32_N_8);
+
 
 	/**	init ADC sampling timer	**/
 	/*	disable slave mode (use clk_int as clk source)	*/

@@ -39,6 +39,7 @@ volatile TFT2_t Global_LCD;
  * and another one to be processed while the first is sent.
  */
 //volatile u16 Global_PixArr[2 * LINES_PER_IMAGE_BUFFER * 128];
+// added two more lines to be enough when drawing info.
 volatile u16 Global_PixArr[32 * 128];
 
 volatile u16* Global_ImgBufferArr[2] = {
@@ -94,8 +95,8 @@ volatile u8 Global_Larger1;
 volatile u8 Global_Smaller2;
 volatile u8 Global_Larger2;
 
-volatile s8 Global_Offset1;
-volatile s8 Global_Offset2;
+volatile s32 Global_Offset1MicroVolts;
+volatile s32 Global_Offset2MicroVolts;
 
 
 /*	current running mode	*/

@@ -54,8 +54,8 @@ extern volatile u8 Global_Smaller1;
 extern volatile u8 Global_Larger1;
 extern volatile u8 Global_Smaller2;
 extern volatile u8 Global_Larger2;
-extern volatile s8 Global_Offset1;
-extern volatile s8 Global_Offset2;
+extern volatile s32 Global_Offset1MicroVolts;
+extern volatile s32 Global_Offset2MicroVolts;
 extern volatile OSC_RunningMode_t Global_CurrentRunningMode;
 
 extern volatile OSC_Cursor_t Cursor_v1;
@@ -92,8 +92,8 @@ void OSC_voidInitGlobal(void)
 	Global_Larger1 = 0;
 	Global_Smaller2 = 0;
 	Global_Larger2 = 0;
-	Global_Offset1 = 0;
-	Global_Offset2 = 0;
+	Global_Offset1MicroVolts = 0;
+	Global_Offset2MicroVolts = 0;
 
 	Global_CurrentRunningMode = OSC_RunningMode_Normal;
 

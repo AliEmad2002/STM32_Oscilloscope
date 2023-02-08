@@ -92,6 +92,8 @@ typedef enum{
 	OSC_RunningMode_Normal
 }OSC_RunningMode_t;
 
+#define OFFSET_POINTER_LEN	7
+
 #endif /* INCLUDE_APP_OSCILLOSCOPE_PRIVATE_H_ */
 
 

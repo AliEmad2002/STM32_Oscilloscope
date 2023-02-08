@@ -30,6 +30,7 @@
 #include "GPIO_interface.h"
 #include "EXTI_interface.h"
 #include "ADC_interface.h"
+#include "MDAC_interface.h"
 
 /*	HAL	*/
 #include "TFT_interface_V2.h"

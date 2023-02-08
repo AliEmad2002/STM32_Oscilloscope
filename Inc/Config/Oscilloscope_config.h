@@ -39,6 +39,13 @@
 
 #define LCD_AXIS_DRAWING_COLOR_U16					(colorYellow.code565)
 
+#define LCD_OFFSET_POINTER1_DRAWING_COLOR_U16		LCD_MAIN_DRAWING_COLOR_U16
+
+#define LCD_OFFSET_POINTER2_DRAWING_COLOR_U16		\
+	LCD_SECONDARY_DRAWING_COLOR_U16
+
+
+
 //#define LCD_MENU_FONT_SIZE							1
 
 #define LCD_FPS										10
@@ -60,8 +67,8 @@
  * Note: Do not use the line of the frequency measurement pin, as it is used
  * by application!!
  */
-#define BUTTON_AUTO_ENTER_MENU_PIN					GPIO_Pin_A9
-#define BUTTON_PAUSE_RESUME_PIN						GPIO_Pin_B11
+#define BUTTON_AUTO_ENTER_MENU_PIN					GPIO_Pin_B11
+#define BUTTON_PAUSE_RESUME_PIN						GPIO_Pin_A7
 
 #define BUTTON_DEBOUNCING_TIME_MS					250ul
 #define ROTARY_DEBOUNCING_TIME_MS					25ul
@@ -113,17 +120,17 @@ static const u64 OSC_nSecondsPerDivArr[NUMBER_OF_TIME_DIVS] = {
  ******************************************************************************/
 #define FREQ_MEASURE_CH1_TIMER_UNIT_NUMBER				2
 #define FREQ_MEASURE_CH1_TIMER_UNIT_AFIO_MAP			0
-#define FREQ_MEASURE_CH1_MIN_FREQ_MILLI_HZ				(1 * 10 * 1000)
+#define FREQ_MEASURE_CH1_MIN_FREQ_MILLI_HZ				(1 * 40 * 1000)
 
-#define FREQ_MEASURE_CH2_TIMER_UNIT_NUMBER				3
+#define FREQ_MEASURE_CH2_TIMER_UNIT_NUMBER				1
 #define FREQ_MEASURE_CH2_TIMER_UNIT_AFIO_MAP			0
-#define FREQ_MEASURE_CH2_MIN_FREQ_MILLI_HZ				(1 * 10 * 1000)
+#define FREQ_MEASURE_CH2_MIN_FREQ_MILLI_HZ				(1 * 40 * 1000)
 
 /*
  * Used in frequency measurement in auto calibrate function. This is the timeout
  * of waiting for signal rising edge to get non-old/parasitic frequency measure.
  */
-#define FREQ_MEASURE_TIMEOUT_MS						100
+#define FREQ_MEASURE_TIMEOUT_MS						1000
 
 #endif /* OSCILLOSCOPE_CONFIG_H_ */
 
