@@ -51,7 +51,7 @@
 extern volatile u32 stkTicksPerSecond;
 
 extern volatile TFT2_t Global_LCD;
-extern volatile u16 Global_PixArr[32 * 128];
+extern volatile u16 Global_PixArr[32 * SIGNAL_LINE_LENGTH];
 extern volatile u16* Global_ImgBufferArr[2];
 
 extern volatile u16 Global_SampleBuffer[2 * NUMBER_OF_SAMPLES];
@@ -680,7 +680,7 @@ void OSC_voidInterpolate(void)
 * v_ch 	= 5 - v_opamp / 0.33			[volts]
 * 		= 5 - 10 * v_adc / 4096			[volts]
 *
-* v_pix = v_ch * pixels_per_volt + 128 / 2
+* v_pix = v_ch * pixels_per_volt + SIGNAL_LINE_LENGTH / 2
 *
 * 		 = 	5 * pixels_per_volt -
 * 		 	(10 * pixels_per_volt * v_adc) / 4096 +
@@ -743,7 +743,7 @@ void OSC_voidInterpolate(void)
 {                                                                         \
 	DMA_voidSetMemoryAddress(                                             \
 		DMA_UnitNumber_1, LINE_SEGMENT_DMA_CHANNEL,                       \
-		(void*)&Global_ImgBufferArr[(imgBufferIndex)][(line) * 128 + (start)]);  \
+		(void*)&Global_ImgBufferArr[(imgBufferIndex)][(line) * SIGNAL_LINE_LENGTH + (start)]);  \
                                                                           \
 	DMA_voidSetNumberOfData(                                              \
 		DMA_UnitNumber_1, LINE_SEGMENT_DMA_CHANNEL,                       \
@@ -769,7 +769,7 @@ void OSC_voidInterpolate(void)
 {										        \
 	FILL_SEGMENT(                               \
 		(imgBufferIndex), 0, 0,                 \
-		LINES_PER_IMAGE_BUFFER * 128 - 1,       \
+		LINES_PER_IMAGE_BUFFER * SIGNAL_LINE_LENGTH - 1,       \
 		LCD_BACKGROUND_COLOR_U16                \
 	)                                           \
 }
@@ -788,11 +788,11 @@ void OSC_voidInterpolate(void)
 {																 \
 	u8 lineNumber = (pos) % LINES_PER_IMAGE_BUFFER;              \
                                                                  \
-	for (u8 k = 0; k < 128; k += SUM_OF_DASH_LEN)                \
+	for (u8 k = 0; k < SIGNAL_LINE_LENGTH; k += SUM_OF_DASH_LEN)                \
 	{                                                            \
-		for (u8 l = 0; l < 3 && k < 128; l++)                    \
+		for (u8 l = 0; l < 3 && k < SIGNAL_LINE_LENGTH; l++)                    \
 		{                                                        \
-			u16 index = lineNumber * 128 + k + l;                \
+			u16 index = lineNumber * SIGNAL_LINE_LENGTH + k + l;                \
 			Global_ImgBufferArr[(imgBufferIndex)][index] =       \
 				(color);                                         \
 		}                                                        \
@@ -805,7 +805,7 @@ void OSC_voidInterpolate(void)
 	{                                                                   \
 		for (u8 k = 0; k < 3; k++)                                      \
 		{                                                               \
-			u16 index = (i + k) * 128 + (pos);                          \
+			u16 index = (i + k) * SIGNAL_LINE_LENGTH + (pos);                          \
                                                                         \
 			Global_ImgBufferArr[(imgBufferIndex)][index] =              \
 				(color);                      							\
@@ -815,7 +815,7 @@ void OSC_voidInterpolate(void)
 
 #define DRAW_TIME_AXIS(imgBufferIndex)                      \
 {                                                           \
-	for (u16 i = 64; i < LINES_PER_IMAGE_BUFFER * 128; i+=128)     \
+	for (u16 i = 64; i < LINES_PER_IMAGE_BUFFER * SIGNAL_LINE_LENGTH; i+=SIGNAL_LINE_LENGTH)     \
 	{                                                       \
 		Global_ImgBufferArr[(imgBufferIndex)][i] =          \
 			LCD_AXIS_DRAWING_COLOR_U16;                     \
@@ -834,7 +834,7 @@ void OSC_voidInterpolate(void)
 		CONVERT_UV_TO_PIX_CH1(Global_Offset1MicroVolts) + 63 >          \
 		OFFSET_POINTER_LEN &&                                           \
 		CONVERT_UV_TO_PIX_CH1(Global_Offset1MicroVolts) + 63 <          \
-		128 - OFFSET_POINTER_LEN                                        \
+		SIGNAL_LINE_LENGTH - OFFSET_POINTER_LEN                                        \
 	)                                                                   \
 	{                                                                   \
 		u8 start =                                                      \
@@ -845,7 +845,7 @@ void OSC_voidInterpolate(void)
 		{                                                               \
 			for (u8 k = start; k < start + n; k++)                      \
 			{                                                           \
-				Global_ImgBufferArr[(imgBufferIndex)][128 * j + k] =    \
+				Global_ImgBufferArr[(imgBufferIndex)][SIGNAL_LINE_LENGTH * j + k] =    \
 				LCD_OFFSET_POINTER1_DRAWING_COLOR_U16;                  \
 			}                                                           \
 			start++;                                                    \
@@ -862,7 +862,7 @@ void OSC_voidInterpolate(void)
 		CONVERT_UV_TO_PIX_CH2(Global_Offset2MicroVolts) + 63 >          \
 		OFFSET_POINTER_LEN &&                                           \
 		CONVERT_UV_TO_PIX_CH2(Global_Offset2MicroVolts) + 63 <          \
-		128 - OFFSET_POINTER_LEN                                        \
+		SIGNAL_LINE_LENGTH - OFFSET_POINTER_LEN                                        \
 	)                                                                   \
 	{                                                                   \
 		u8 start =                                                      \
@@ -873,7 +873,7 @@ void OSC_voidInterpolate(void)
 		{                                                               \
 			for (u8 k = start; k < start + n; k++)                      \
 			{                                                           \
-				Global_ImgBufferArr[(imgBufferIndex)][128 * j + k] =    \
+				Global_ImgBufferArr[(imgBufferIndex)][SIGNAL_LINE_LENGTH * j + k] =    \
 				LCD_OFFSET_POINTER2_DRAWING_COLOR_U16;                  \
 			}                                                           \
 			start++;                                                    \
@@ -885,7 +885,7 @@ void OSC_voidInterpolate(void)
 void OSC_voidSetDisplayBoundariesForSignalArea(void)
 {
 	/*	set screen boundaries for full signal image area	*/
-	TFT2_SET_X_BOUNDARIES(&Global_LCD, 0, 127);
+	TFT2_SET_X_BOUNDARIES(&Global_LCD, SIGNAL_IMG_X_MIN, SIGNAL_IMG_X_MAX);
 	TFT2_SET_Y_BOUNDARIES(&Global_LCD, 0, NUMBER_OF_SAMPLES - 1);
 
 	/*	start data writing mode on screen	*/
@@ -949,7 +949,7 @@ void OSC_voidDrawNormalModeFrame(void)
 					GET_CH1_V_IN_PIXELS(Global_SampleBuffer[2 * readCount]);
 			}
 
-			if (currentRead1Pix < 0 || currentRead1Pix > 127)
+			if (currentRead1Pix < SIGNAL_IMG_X_MIN || currentRead1Pix > SIGNAL_IMG_X_MAX)
 				isRead1InRange = false;
 			else
 				isRead1InRange = true;
@@ -960,7 +960,7 @@ void OSC_voidDrawNormalModeFrame(void)
 					GET_CH2_V_IN_PIXELS(Global_SampleBuffer[2 * readCount + 1]);
 			}
 
-			if (currentRead2Pix < 0 || currentRead2Pix > 127)
+			if (currentRead2Pix < SIGNAL_IMG_X_MIN || currentRead2Pix > SIGNAL_IMG_X_MIN)
 				isRead2InRange = false;
 			else
 				isRead2InRange = true;
@@ -1043,7 +1043,7 @@ void OSC_voidDrawNormalModeFrame(void)
 		/*	Send buffer to TFT using DMA (Internally waits for DMA TC)	*/
 		TFT2_voidSendPixels(
 			(TFT2_t*)&Global_LCD, (u16*)Global_ImgBufferArr[imgBufferIndex],
-			LINES_PER_IMAGE_BUFFER * 128ul);
+			LINES_PER_IMAGE_BUFFER * SIGNAL_LINE_LENGTH);
 
 		/*	Update imgBufferIndex	*/
 		if (imgBufferIndex == 0)
@@ -1081,8 +1081,8 @@ void OSC_voidDrawNormalModeFrame(void)
 	if ((yVal) < 0)                             \
 		(yVal) = 0;                             \
                                                 \
-	else if ((yVal) >= 128)      			    \
-		(yVal) = 128 - 1;       			    \
+	else if ((yVal) >= SIGNAL_LINE_LENGTH)      			    \
+		(yVal) = SIGNAL_LINE_LENGTH - 1;       			    \
 }
 
 void OSC_voidDrawXYModeFrame(void)
@@ -1535,19 +1535,19 @@ void OSC_voidAutoCalibrate(void)
 	s64 min2Uv = GET_V_IN_MICRO_VOLTS(max2);
 
 	/*
-	 * volts per pixel = (v_max - v_min) / (128 * 70%)
+	 * volts per pixel = (v_max - v_min) / (SIGNAL_LINE_LENGTH * 70%)
 	 * (The 90% means that the signal would take only 70% of the display, which
 	 * is nicer to user that fully taking the screen)
 	 *
 	 * (Min is 100mV per whole display, can be later changed)
 	 */
-	Global_CurrentCh1MicroVoltsPerPix = (max1Uv - min1Uv) / 90;
-	if (Global_CurrentCh1MicroVoltsPerPix <= 100000 / 128)
-		Global_CurrentCh1MicroVoltsPerPix = 100000 / 128;
+	Global_CurrentCh1MicroVoltsPerPix = (max1Uv - min1Uv) / ((70 * SIGNAL_LINE_LENGTH) / 100);
+	if (Global_CurrentCh1MicroVoltsPerPix <= 100000 / SIGNAL_LINE_LENGTH)
+		Global_CurrentCh1MicroVoltsPerPix = 100000 / SIGNAL_LINE_LENGTH;
 
-	Global_CurrentCh2MicroVoltsPerPix = (max2Uv - min2Uv) / 90;
-	if (Global_CurrentCh2MicroVoltsPerPix <= 100000 / 128)
-		Global_CurrentCh2MicroVoltsPerPix = 100000 / 128;
+	Global_CurrentCh2MicroVoltsPerPix = (max2Uv - min2Uv) / ((70 * SIGNAL_LINE_LENGTH) / 100);
+	if (Global_CurrentCh2MicroVoltsPerPix <= 100000 / SIGNAL_LINE_LENGTH)
+		Global_CurrentCh2MicroVoltsPerPix = 100000 / SIGNAL_LINE_LENGTH;
 
 	/*	channel offset in micro volts = - avg{v_max, v_min}	*/
 	Global_Offset1MicroVolts = - (max1Uv + min1Uv) / 2;

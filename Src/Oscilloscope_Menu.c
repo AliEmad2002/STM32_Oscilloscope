@@ -44,6 +44,8 @@ extern volatile b8 Global_IsMenuOpen;
 
 extern volatile Rotary_Encoder_t OSC_RotaryEncoder;
 
+extern void OSC_voidSetDisplayBoundariesForSignalArea(void);
+
 
 /*	pixel array of a single line	*/
 u16 menuLinePixArr[8][128];
@@ -121,12 +123,7 @@ void OSC_voidOpenMainMenu(void)
 	OSC_voidOpenMenu(&mainMenu);
 
 	/*	set screen boundaries for full signal image area	*/
-	TFT2_SET_X_BOUNDARIES(&Global_LCD, 0, 127);
-	TFT2_SET_Y_BOUNDARIES(&Global_LCD, 0, NUMBER_OF_SAMPLES - 1);
-
-	/*	start data writing mode on screen	*/
-	TFT2_WRITE_CMD(&Global_LCD, TFT_CMD_MEM_WRITE);
-	TFT2_ENTER_DATA_MODE(&Global_LCD);
+	OSC_voidSetDisplayBoundariesForSignalArea();
 
 	/*	clear opened menu flag	*/
 	Global_IsMenuOpen = false;

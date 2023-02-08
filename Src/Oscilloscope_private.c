@@ -40,10 +40,10 @@ volatile TFT2_t Global_LCD;
  */
 //volatile u16 Global_PixArr[2 * LINES_PER_IMAGE_BUFFER * 128];
 // added two more lines to be enough when drawing info.
-volatile u16 Global_PixArr[32 * 128];
+volatile u16 Global_PixArr[32 * SIGNAL_LINE_LENGTH];
 
 volatile u16* Global_ImgBufferArr[2] = {
-	Global_PixArr, &Global_PixArr[LINES_PER_IMAGE_BUFFER * 128]
+	Global_PixArr, &Global_PixArr[LINES_PER_IMAGE_BUFFER * SIGNAL_LINE_LENGTH]
 };
 
 volatile u16 Global_InfoImg[12 * 5 * 8];

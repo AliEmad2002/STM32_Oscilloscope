@@ -94,6 +94,13 @@ typedef enum{
 
 #define OFFSET_POINTER_LEN	7
 
+#define SIGNAL_IMG_X_MIN	8
+
+#define SIGNAL_IMG_X_MAX	(128 - 8 - 1)
+
+#define SIGNAL_LINE_LENGTH (SIGNAL_IMG_X_MAX - SIGNAL_IMG_X_MIN + 1)
+
+
 #endif /* INCLUDE_APP_OSCILLOSCOPE_PRIVATE_H_ */
 
 
