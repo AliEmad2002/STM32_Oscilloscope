@@ -23,14 +23,29 @@ typedef struct{
 /*	Inits info array	*/
 void OSC_voidInitInfo(void);
 
+/*	enables info	*/
+void OSC_voidEnableInfo(u8 infoIndex);
+
+/*	disables info	*/
+void OSC_voidDisableInfo(u8 infoIndex);
+
 /*
  * Draws enabled info on their selected places on the display.
  * (Draws first 4 info's only, as there's only 4 places available)
  */
 void OSC_voidDrawInfo(void);
 
-//void OSC_voidEnableInfo()
+/*
+ * given a value in nano, it get the suitable floating point number
+ * (does no actually use float for less over head when there's no FPU),
+ * and the suitable unit prefix.
+ */
+void OSC_voidGetNumberPrintableVersion(
+	u64 valInNano, u32* valInteger, u32* valFraction, char* unitPrefix);
 
+void OSC_voidGetInfoStringToPrint(char* str, u8 infoIndex);
+
+void OSC_voidSSetTFTBoundariesToInfo(u8 infoIndex);
 
 
 

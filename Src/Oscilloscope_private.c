@@ -44,8 +44,6 @@ volatile u16* Global_ImgBufferArr[2] = {
 	Global_PixArr, &Global_PixArr[LINES_PER_IMAGE_BUFFER * SIGNAL_LINE_LENGTH]
 };
 
-volatile u16 Global_InfoImg[12 * 5 * 8];
-
 /*
  * Peak to peak value in a single frame.
  * Is calculated as the difference between the largest and smallest values in
@@ -102,3 +100,4 @@ volatile b8 Global_Ch2LastReadWasInRange;
 /*	current running mode	*/
 volatile OSC_RunningMode_t Global_CurrentRunningMode;
 
+volatile u8 Global_NotInUseImgBufferIndex;

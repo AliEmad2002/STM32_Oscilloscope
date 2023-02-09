@@ -59,6 +59,7 @@ extern volatile s32 Global_Offset2MicroVolts;
 extern volatile OSC_RunningMode_t Global_CurrentRunningMode;
 extern volatile b8 Global_Ch1LastReadWasInRange;
 extern volatile b8 Global_Ch2LastReadWasInRange;
+extern volatile u8 Global_NotInUseImgBufferIndex;
 
 extern volatile OSC_Cursor_t Cursor_v1;
 extern volatile OSC_Cursor_t Cursor_v2;
@@ -96,6 +97,11 @@ void OSC_voidInitGlobal(void)
 	Global_Larger2 = 0;
 	Global_Offset1MicroVolts = 0;
 	Global_Offset2MicroVolts = 0;
+
+	Global_Ch1LastReadWasInRange = false;
+	Global_Ch2LastReadWasInRange = false;
+
+	Global_NotInUseImgBufferIndex = 0;
 
 	Global_CurrentRunningMode = OSC_RunningMode_Normal;
 

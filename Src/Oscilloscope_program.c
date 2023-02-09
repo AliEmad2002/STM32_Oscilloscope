@@ -48,16 +48,10 @@
 /*******************************************************************************
  * Extern global variables:
  ******************************************************************************/
-extern volatile u32 stkTicksPerSecond;
-
 extern volatile TFT2_t Global_LCD;
-extern volatile u16 Global_PixArr[2 * LINES_PER_IMAGE_BUFFER * SIGNAL_LINE_LENGTH];
 extern volatile u16* Global_ImgBufferArr[2];
 
 extern volatile u16 Global_SampleBuffer[2 * NUMBER_OF_SAMPLES];
-
-extern volatile char Global_Str[128];
-extern volatile u16 Global_InfoImg[12 * 5 * 8];
 
 extern volatile u8 Global_Ch1PeakToPeakValueInCurrentFrame;
 extern volatile u8 Global_Ch1MinValueInCurrentFrame;
@@ -97,10 +91,14 @@ extern volatile s32 Global_Offset2MicroVolts;
 
 extern volatile OSC_RunningMode_t Global_CurrentRunningMode;
 
+extern volatile u8 Global_NotInUseImgBufferIndex;
+
 extern volatile OSC_Cursor_t Cursor_v1;
 extern volatile OSC_Cursor_t Cursor_v2;
 extern volatile OSC_Cursor_t Cursor_t1;
 extern volatile OSC_Cursor_t Cursor_t2;
+
+extern void OSC_voidDrawInfo(void);
 
 /*******************************************************************************
  * Div. control:
@@ -309,7 +307,7 @@ void OSC_voidTrigPauseResume(void)
 
 	if (
 		STK_u64GetElapsedTicks() - lastPressTime <
-		BUTTON_DEBOUNCING_TIME_MS * 72000ul)
+		BUTTON_DEBOUNCING_TIME_MS * STK_TICKS_PER_MS)
 	{
 		return;
 	}
@@ -336,7 +334,7 @@ void OSC_voidUpButtonCallBack(void)
 
 	if (
 		STK_u64GetElapsedTicks() - lastPressTime <
-		ROTARY_DEBOUNCING_TIME_MS * 72000ul)
+		ROTARY_DEBOUNCING_TIME_MS * STK_TICKS_PER_MS)
 	{
 		return;
 	}
@@ -394,7 +392,7 @@ void OSC_voidDownButtonCallBack(void)
 
 	if (
 		STK_u64GetElapsedTicks() - lastPressTime <
-		ROTARY_DEBOUNCING_TIME_MS * 72000ul)
+		ROTARY_DEBOUNCING_TIME_MS * STK_TICKS_PER_MS)
 	{
 		return;
 	}
@@ -453,7 +451,7 @@ void OSC_voidMenuButtonCallback(void)
 //
 //	if (
 //		STK_u64GetElapsedTicks() - lastPressTime <
-//		BUTTON_DEBOUNCING_TIME_MS * 72000ul)
+//		BUTTON_DEBOUNCING_TIME_MS * STK_TICKS_PER_MS)
 //	{
 //		return;
 //	}
@@ -471,7 +469,7 @@ void OSC_voidAutoEnterMenuButtonCallback(void)
 
 	if (
 		STK_u64GetElapsedTicks() - lastPressTime <
-		BUTTON_DEBOUNCING_TIME_MS * 72000ul)
+		BUTTON_DEBOUNCING_TIME_MS * STK_TICKS_PER_MS)
 	{
 		return;
 	}
@@ -534,11 +532,12 @@ void OSC_voidWaitForSignalRisingEdge(void)
 
 	while(!TIM_b8GetStatusFlag(syncTimUnit, TIM_Status_CC1))
 	{
-		if (STK_u64GetElapsedTicks() - startTime > stkTicksPerSecond / 2)
+		if (
+			STK_u64GetElapsedTicks() - startTime >
+			RISING_EDGE_WAIT_TIMEOUT_MS * STK_TICKS_PER_MS
+		)
 		{
 			break;
-			volatile u32 f99 = 1;
-			f99++;
 		}
 	}
 }
@@ -583,28 +582,6 @@ void OSC_voidWaitSampleBufferFill(void)
 
 	/*	disable trigger timer counter	*/
 	TIM_DISABLE_COUNTER(3);
-}
-
-inline void OSC_voidTakeNewSamples(void)
-{
-	/*	prepare ADC for sampling at wanted speed	*/
-	OSC_voidPreFillSampleBuffer();
-
-	/*	sync on signal rising edge	*/
-	OSC_voidWaitForSignalRisingEdge();
-
-	/*	start filling sample buffer	*/
-	OSC_voidStartFillingSampleBuffer();
-
-	/*	wait sample buffer fill	*/
-	OSC_voidWaitSampleBufferFill();
-
-	/*
-	 * interpolate samples if and only if: t_pix < t_conv,
-	 * i.e.: t_pix < 1uS
-	 */
-	if (Global_CurrentNanoSecondsPerPix < ADC_MIN_CONV_TIME_NANO_SECOND)
-		OSC_voidInterpolate();
 }
 
 /*
@@ -669,6 +646,28 @@ void OSC_voidInterpolate(void)
 	{
 		Global_SampleBuffer[2 * i + 1] = sampleBufferInterpolated[i];
 	}
+}
+
+inline void OSC_voidTakeNewSamples(void)
+{
+	/*	prepare ADC for sampling at wanted speed	*/
+	OSC_voidPreFillSampleBuffer();
+
+	/*	sync on signal rising edge	*/
+	OSC_voidWaitForSignalRisingEdge();
+
+	/*	start filling sample buffer	*/
+	OSC_voidStartFillingSampleBuffer();
+
+	/*	wait sample buffer fill	*/
+	OSC_voidWaitSampleBufferFill();
+
+	/*
+	 * interpolate samples if and only if: t_pix < t_conv,
+	 * i.e.: t_pix < 1uS
+	 */
+	if (Global_CurrentNanoSecondsPerPix < ADC_MIN_CONV_TIME_NANO_SECOND)
+		OSC_voidInterpolate();
 }
 
 /*******************************************************************************
@@ -742,11 +741,11 @@ void OSC_voidInterpolate(void)
 /*
  * fills a segment in selected line in selected image buffer with any color
  */
-#define FILL_SEGMENT(imgBufferIndex, line, start, end, color)             \
+#define FILL_SEGMENT(line, start, end, color)             \
 {                                                                         \
 	DMA_voidSetMemoryAddress(                                             \
 		DMA_UnitNumber_1, LINE_SEGMENT_DMA_CHANNEL,                       \
-		(void*)&Global_ImgBufferArr[(imgBufferIndex)][(line) * SIGNAL_LINE_LENGTH + (start)]);  \
+		(void*)&Global_ImgBufferArr[Global_NotInUseImgBufferIndex][(line) * SIGNAL_LINE_LENGTH + (start)]);  \
                                                                           \
 	DMA_voidSetNumberOfData(                                              \
 		DMA_UnitNumber_1, LINE_SEGMENT_DMA_CHANNEL,                       \
@@ -768,10 +767,10 @@ void OSC_voidInterpolate(void)
 		DMA_UnitNumber_1, LINE_SEGMENT_DMA_CHANNEL);                      \
 }
 
-#define CLEAR_IMG_BUFFER(imgBufferIndex)	    \
+#define CLEAR_IMG_BUFFER	    \
 {										        \
 	FILL_SEGMENT(                               \
-		(imgBufferIndex), 0, 0,                 \
+		0, 0,                 \
 		LINES_PER_IMAGE_BUFFER * SIGNAL_LINE_LENGTH - 1,       \
 		LCD_BACKGROUND_COLOR_U16                \
 	)                                           \
@@ -781,13 +780,13 @@ void OSC_voidInterpolate(void)
 {                                                                          \
 	while(                                                                 \
 		STK_u64GetElapsedTicks() - lastFrameTimeStamp <                    \
-		stkTicksPerSecond / LCD_FPS                                        \
+		STK_u32GetTicksPerSecond() / LCD_FPS                                        \
 	);                                                                     \
                                                                            \
 	(lastFrameTimeStamp) = STK_u64GetElapsedTicks();                       \
 }
 
-#define DRAW_TIME_CURSOR(imgBufferIndex, pos, color)			 \
+#define DRAW_TIME_CURSOR(pos, color)			 \
 {																 \
 	u8 lineNumber = (pos) % LINES_PER_IMAGE_BUFFER;              \
                                                                  \
@@ -796,13 +795,13 @@ void OSC_voidInterpolate(void)
 		for (u8 l = 0; l < 3 && k < SIGNAL_LINE_LENGTH; l++)                    \
 		{                                                        \
 			u16 index = lineNumber * SIGNAL_LINE_LENGTH + k + l;                \
-			Global_ImgBufferArr[(imgBufferIndex)][index] =       \
+			Global_ImgBufferArr[Global_NotInUseImgBufferIndex][index] =       \
 				(color);                                         \
 		}                                                        \
 	}                                                            \
 }
 
-#define DRAW_VOLTAGE_CURSOR(imgBufferIndex, pos, color)			        \
+#define DRAW_VOLTAGE_CURSOR(pos, color)			        \
 {                                                                       \
 	for (u8 i = 0; i < LINES_PER_IMAGE_BUFFER; i += SUM_OF_DASH_LEN)    \
 	{                                                                   \
@@ -810,17 +809,17 @@ void OSC_voidInterpolate(void)
 		{                                                               \
 			u16 index = (i + k) * SIGNAL_LINE_LENGTH + (pos);                          \
                                                                         \
-			Global_ImgBufferArr[(imgBufferIndex)][index] =              \
+			Global_ImgBufferArr[Global_NotInUseImgBufferIndex][index] =              \
 				(color);                      							\
 		}                                                               \
 	}                                                                   \
 }
 
-#define DRAW_TIME_AXIS(imgBufferIndex)                      \
+#define DRAW_TIME_AXIS                      \
 {                                                           \
 	for (u16 i = SIGNAL_LINE_LENGTH / 2; i < LINES_PER_IMAGE_BUFFER * SIGNAL_LINE_LENGTH; i+=SIGNAL_LINE_LENGTH)     \
 	{                                                       \
-		Global_ImgBufferArr[(imgBufferIndex)][i] =          \
+		Global_ImgBufferArr[Global_NotInUseImgBufferIndex][i] =          \
 			LCD_AXIS_DRAWING_COLOR_U16;                     \
 	}                                                       \
 }
@@ -829,7 +828,7 @@ void OSC_voidInterpolate(void)
 
 #define CONVERT_UV_TO_PIX_CH2(uv)((uv) / (s32)Global_CurrentCh2MicroVoltsPerPix)
 
-#define DRAW_OFFSET_POINTER_CH1(imgBufferIndex)							\
+#define DRAW_OFFSET_POINTER_CH1							\
 {                                                                       \
 	/*	if channel is enabled and offset is in displayable range	*/  \
 	if (                                                                \
@@ -848,7 +847,7 @@ void OSC_voidInterpolate(void)
 		{                                                               \
 			for (u8 k = start; k < start + n; k++)                      \
 			{                                                           \
-				Global_ImgBufferArr[(imgBufferIndex)][SIGNAL_LINE_LENGTH * j + k] =    \
+				Global_ImgBufferArr[Global_NotInUseImgBufferIndex][SIGNAL_LINE_LENGTH * j + k] =    \
 				LCD_OFFSET_POINTER1_DRAWING_COLOR_U16;                  \
 			}                                                           \
 			start++;                                                    \
@@ -857,7 +856,7 @@ void OSC_voidInterpolate(void)
 	}                                                                   \
 }
 
-#define DRAW_OFFSET_POINTER_CH2(imgBufferIndex)							\
+#define DRAW_OFFSET_POINTER_CH2							\
 {                                                                       \
 	/*	if channel is enabled and offset is in displayable range	*/  \
 	if (                                                                \
@@ -876,7 +875,7 @@ void OSC_voidInterpolate(void)
 		{                                                               \
 			for (u8 k = start; k < start + n; k++)                      \
 			{                                                           \
-				Global_ImgBufferArr[(imgBufferIndex)][SIGNAL_LINE_LENGTH * j + k] =    \
+				Global_ImgBufferArr[Global_NotInUseImgBufferIndex][SIGNAL_LINE_LENGTH * j + k] =    \
 				LCD_OFFSET_POINTER2_DRAWING_COLOR_U16;                  \
 			}                                                           \
 			start++;                                                    \
@@ -953,18 +952,15 @@ void OSC_voidDrawNormalModeFrame(void)
 	b8 isRead1InRange = false;
 	b8 isRead2InRange = false;
 
-	/*	index of the image buffer to use	*/
-	u8 imgBufferIndex = 0;
-
 	/*
 	 * draw current image frame of screen	*/
 	while(1)
 	{
 		/*	clear image buffer number 'j'	*/
-		CLEAR_IMG_BUFFER(imgBufferIndex);
+		CLEAR_IMG_BUFFER;
 
 		/*	draw time axis (voltage = 0)	*/
-		DRAW_TIME_AXIS(imgBufferIndex);
+		DRAW_TIME_AXIS;
 
 		/*	Draw/process image buffer number 'j'	*/
 		for (u8 i = 0; i < LINES_PER_IMAGE_BUFFER; i++)
@@ -998,7 +994,7 @@ void OSC_voidDrawNormalModeFrame(void)
 
 					/*	draw main color from "smaller1" to "larger1"	*/
 					FILL_SEGMENT(
-						imgBufferIndex, i, Global_Smaller1, Global_Larger1,
+						i, Global_Smaller1, Global_Larger1,
 						LCD_MAIN_DRAWING_COLOR_U16);
 				}
 
@@ -1035,7 +1031,7 @@ void OSC_voidDrawNormalModeFrame(void)
 
 					/*	draw secondary color from "smaller2" to "larger2"	*/
 					FILL_SEGMENT(
-						imgBufferIndex, i, Global_Smaller2, Global_Larger2,
+						i, Global_Smaller2, Global_Larger2,
 						LCD_SECONDARY_DRAWING_COLOR_U16);
 				}
 
@@ -1047,13 +1043,13 @@ void OSC_voidDrawNormalModeFrame(void)
 			if (Cursor_t1.isEnabled && Cursor_t1.pos == readCount)
 			{
 				DRAW_TIME_CURSOR(
-					imgBufferIndex, readCount, LCD_CURSOR1_DRAWING_COLOR_U16);
+					readCount, LCD_CURSOR1_DRAWING_COLOR_U16);
 			}
 
 			if (Cursor_t2.isEnabled && Cursor_t2.pos == readCount)
 			{
 				DRAW_TIME_CURSOR(
-					imgBufferIndex, readCount, LCD_CURSOR2_DRAWING_COLOR_U16);
+					readCount, LCD_CURSOR2_DRAWING_COLOR_U16);
 			}
 
 			/*	increment readCount	*/
@@ -1064,32 +1060,32 @@ void OSC_voidDrawNormalModeFrame(void)
 		if (Cursor_v1.isEnabled)
 		{
 			DRAW_VOLTAGE_CURSOR(
-				imgBufferIndex, Cursor_v1.pos, LCD_CURSOR1_DRAWING_COLOR_U16);
+				Cursor_v1.pos, LCD_CURSOR1_DRAWING_COLOR_U16);
 		}
 
 		if (Cursor_v2.isEnabled)
 		{
 			DRAW_VOLTAGE_CURSOR(
-				imgBufferIndex, Cursor_v2.pos, LCD_CURSOR2_DRAWING_COLOR_U16);
+				Cursor_v2.pos, LCD_CURSOR2_DRAWING_COLOR_U16);
 		}
 
 		/*	draw offset pointer (case first segment of the frame only)	*/
 		if (readCount == NUMBER_OF_SAMPLES / NUMBER_OF_IMAGE_BUFFERS_PER_FRAME)
 		{
-			DRAW_OFFSET_POINTER_CH1(imgBufferIndex);
-			DRAW_OFFSET_POINTER_CH2(imgBufferIndex);
+			DRAW_OFFSET_POINTER_CH1;
+			DRAW_OFFSET_POINTER_CH2;
 		}
 
 		/*	Send buffer to TFT using DMA (Internally waits for DMA TC)	*/
 		TFT2_voidSendPixels(
-			(TFT2_t*)&Global_LCD, (u16*)Global_ImgBufferArr[imgBufferIndex],
+			(TFT2_t*)&Global_LCD, (u16*)Global_ImgBufferArr[Global_NotInUseImgBufferIndex],
 			LINES_PER_IMAGE_BUFFER * SIGNAL_LINE_LENGTH);
 
 		/*	Update imgBufferIndex	*/
-		if (imgBufferIndex == 0)
-			imgBufferIndex = 1;
-		else // if (imgBufferIndex == 1)
-			imgBufferIndex = 0;
+		if (Global_NotInUseImgBufferIndex == 0)
+			Global_NotInUseImgBufferIndex = 1;
+		else // if (Global_InUseImgBufferIndex == 1)
+			Global_NotInUseImgBufferIndex = 0;
 
 		/*	check end of frame	*/
 		if (readCount == NUMBER_OF_SAMPLES)
@@ -1141,7 +1137,7 @@ void OSC_voidMainSuperLoop(void)
 
 	/*	periodic time to draw info (in STK ticks)	*/
 	volatile u64 infoDrawPeriod =
-		INFO_DRAWING_PERIODIC_TIME_MS * (u64)stkTicksPerSecond / 1000ul;
+		INFO_DRAWING_PERIODIC_TIME_MS * STK_TICKS_PER_MS;
 
 	u64 lastFrameTimeStamp = 0;
 
@@ -1159,14 +1155,14 @@ void OSC_voidMainSuperLoop(void)
 			OSC_voidOpenMainMenu();
 		}
 
-//		/*	if info drawing time has passed, draw info	*/
-//		if (STK_u64GetElapsedTicks() - lastInfoDrawTime > infoDrawPeriod)
-//		{
-//			/*	draw info on screen	*/
-//			OSC_voidDrawInfo();
-//			/*	update timestamp	*/
-//			lastInfoDrawTime = STK_u64GetElapsedTicks();
-//		}
+		/*	if info drawing time has passed, draw info	*/
+		if (STK_u64GetElapsedTicks() - lastInfoDrawTime > infoDrawPeriod)
+		{
+			/*	draw info on screen	*/
+			OSC_voidDrawInfo();
+			/*	update timestamp	*/
+			lastInfoDrawTime = STK_u64GetElapsedTicks();
+		}
 
 		/*	only if device is not paused, take new samples	*/
 		if (!Global_Paused)
@@ -1182,250 +1178,6 @@ void OSC_voidMainSuperLoop(void)
 			break;
 		}
 	}
-}
-
-/*******************************************************************************
- * Info drawing functions:
- ******************************************************************************/
-void OSC_voidGetNumberPritableVersion(
-	volatile u64 valInNano, u32* valInteger, u32* valFraction, char* unitPrefix)
-{
-	if (valInNano < 1e3)
-	{
-		*unitPrefix = 'n';
-		*valInteger = valInNano;
-		*valFraction = 0;
-	}
-	else if (valInNano < 1e6)
-	{
-		*unitPrefix = 'u';
-		*valInteger = valInNano / 1e3;
-		*valFraction = (valInNano - 1e3) / 1e2;
-	}
-	else if (valInNano < 1e9)
-	{
-		*unitPrefix = 'm';
-		*valInteger = valInNano / 1e6;
-		*valFraction = (valInNano - 1e6) / 1e5;
-	}
-	else if (valInNano < 1e12)
-	{
-		*unitPrefix = ' ';
-		*valInteger = valInNano / 1e9;
-		*valFraction = (valInNano - 1e9) / 1e8;
-	}
-	else if (valInNano < 1e15)
-	{
-		*unitPrefix = 'k';
-		*valInteger = valInNano / 1e12;
-		*valFraction = (valInNano - 1e12) / 1e11;
-	}
-	else if (valInNano < 1e18)
-	{
-		*unitPrefix = 'M';
-		*valInteger = valInNano / 1e15;
-		*valFraction = (valInNano - 1e15) / 1e14;
-	}
-
-	/*	fraction is maximumly of 1 digit	*/
-	while (*valFraction > 10)
-		*valFraction /= 10;
-}
-
-void OSC_voidGetInfoStr(char* str)
-{
-	/**	Frequency	**/
-	/*
-	 * read frequency value (this reading is based on the value of OC register
-	 * at time of reading).
-	 */
-	u64 freqmHz = 0;
-	/*
-	 * if CC1IF was not raised before reading CCR1, then no transition have
-	 * not happened. i.e.: freq = 0
-	 */
-	/*if (TIM_GET_STATUS_FLAG(FREQ_MEASURE_TIMER_UNIT_NUMBER, TIM_Status_CC1))
-		freqmHz = TIM_u64GetFrequencyMeasured(FREQ_MEASURE_TIMER_UNIT_NUMBER);*/
-
-	char freqUnitPrefix;
-	u32 freqInteger, freqFraction;
-
-	OSC_voidGetNumberPritableVersion(
-		freqmHz * 1000000, &freqInteger, &freqFraction, &freqUnitPrefix);
-
-	/**	peak to peak voltage	**/
-	u64 vpp =
-		Global_Ch1PeakToPeakValueInCurrentFrame *
-		Global_CurrentCh1MicroVoltsPerPix;
-
-	char vppUnitPrefix;
-	u32 vppInteger, vppFraction;
-
-	OSC_voidGetNumberPritableVersion(
-		vpp * 1000, &vppInteger, &vppFraction, &vppUnitPrefix);
-
-	/**	volts per div	**/
-	u64 voltsPerDiv =
-		Global_CurrentCh1MicroVoltsPerPix * PIXELS_PER_VOLTAGE_DIV;
-
-	char voltsPerDivUnitPrefix;
-	u32 voltsPerDivInteger, voltsPerDivFraction;
-
-	OSC_voidGetNumberPritableVersion(
-		voltsPerDiv * 1000, &voltsPerDivInteger,
-		&voltsPerDivFraction, &voltsPerDivUnitPrefix);
-
-	/**	seconds per div	**/
-	u64 secondsPerDiv = Global_CurrentNanoSecondsPerPix * PIXELS_PER_TIME_DIV;
-
-	char secondsPerDivUnitPrefix;
-	u32 secondsPerDivInteger, secondsPerDivFraction;
-
-	OSC_voidGetNumberPritableVersion(
-		secondsPerDiv, &secondsPerDivInteger,
-		&secondsPerDivFraction, &secondsPerDivUnitPrefix);
-
-	/**	v1	**/
-	u64 v1 = Cursor_v1.pos * Global_CurrentCh1MicroVoltsPerPix;
-
-	char v1UnitPrefix;
-	u32 v1Integer, v1Fraction;
-
-	OSC_voidGetNumberPritableVersion(
-		v1 * 1000, &v1Integer,
-		&v1Fraction, &v1UnitPrefix);
-
-	/**	v2	**/
-	u64 v2 = Cursor_v2.pos * Global_CurrentCh2MicroVoltsPerPix;
-
-	char v2UnitPrefix;
-	u32 v2Integer, v2Fraction;
-
-	OSC_voidGetNumberPritableVersion(
-		v2 * 1000, &v2Integer,
-		&v2Fraction, &v2UnitPrefix);
-
-	/**	t1	**/
-	u64 t1 = Cursor_t1.pos * Global_CurrentNanoSecondsPerPix;
-
-	char t1UnitPrefix;
-	u32 t1Integer, t1Fraction;
-
-	OSC_voidGetNumberPritableVersion(
-		t1, &t1Integer,
-		&t1Fraction, &t1UnitPrefix);
-
-	/**	t2	**/
-	volatile u64 t2 = Cursor_t2.pos * Global_CurrentNanoSecondsPerPix;
-
-	char t2UnitPrefix;
-	u32 t2Integer, t2Fraction;
-
-	OSC_voidGetNumberPritableVersion(
-		t2, &t2Integer,
-		&t2Fraction, &t2UnitPrefix);
-
-	sprintf(
-		(char*)str,
-		"F=%u.%u%cHz Vpp=%u.%u%cV\nVd=%u.%u%cV td=%u.%u%cS\nV1=%u.%u%cV t1=%u.%u%cS\nV2=%u.%u%cV t2=%u.%u%cS",
-		freqInteger, freqFraction, freqUnitPrefix,
-		vppInteger, vppFraction, vppUnitPrefix,
-		voltsPerDivInteger, voltsPerDivFraction, voltsPerDivUnitPrefix,
-		secondsPerDivInteger, secondsPerDivFraction, secondsPerDivUnitPrefix,
-		v1Integer, v1Fraction, v1UnitPrefix,
-		t1Integer, t1Fraction, t1UnitPrefix,
-		v2Integer, v2Fraction, v2UnitPrefix,
-		t2Integer, t2Fraction, t2UnitPrefix
-	);
-}
-
-void OSC_voidDrawFrequencyInfo(void)
-{
-	static u64 lastFreqmHz = 0;
-	/**
-	 * read frequency value (this reading is based on the value of OC register
-	 * at time of reading).
-	 **/
-	u64 freqmHz = 0;
-	/*
-	 * if CC1IF was not raised before reading CCR1, then no transition have
-	 * not happened. i.e.: freq = 0
-	 */
-	/*if (TIM_GET_STATUS_FLAG(FREQ_MEASURE_TIMER_UNIT_NUMBER, TIM_Status_CC1))
-		freqmHz = TIM_u64GetFrequencyMeasured(FREQ_MEASURE_TIMER_UNIT_NUMBER);*/
-
-	/*	draw only if value has changed	*/
-	if (freqmHz == lastFreqmHz)
-		return;
-
-	/**	print value on char array	**/
-	char freqUnitPrefix;
-	u32 freqInteger, freqFraction;
-
-	OSC_voidGetNumberPritableVersion(
-		freqmHz * 1000000, &freqInteger, &freqFraction, &freqUnitPrefix);
-
-	sprintf(
-		(char*)Global_Str, "F=%u.%u%cHz", freqInteger, freqFraction,
-		freqUnitPrefix);
-
-	/*	print char array on image buffer	*/
-	Txt_voidCpyStrToStaticPixArrNormalOrientation(
-		(u8*)Global_Str, LCD_BACKGROUND_COLOR_U16, LCD_MAIN_DRAWING_COLOR_U16,
-		1, Txt_HorizontalMirroring_Disabled, Txt_VerticalMirroring_Disabled,
-		0, 0, 8, 60, (u16(*)[])Global_InfoImg);
-
-	/**	send image buffer to display TFT	**/
-	TFT2_SET_X_BOUNDARIES(&Global_LCD, 0, 12 * 5);
-	TFT2_SET_Y_BOUNDARIES(
-		&Global_LCD, NUMBER_OF_SAMPLES, NUMBER_OF_SAMPLES + 8);
-
-	TFT2_WRITE_CMD(&Global_LCD, TFT_CMD_MEM_WRITE);
-	TFT2_ENTER_DATA_MODE(&Global_LCD);
-
-	/*	send info image	*/
-	TFT2_voidSendPixels(&Global_LCD, (u16*)Global_InfoImg, 12 * 5 * 8);
-
-	/*	wait for transfer complete	*/
-	TFT2_voidWaitCurrentDataTransfer(&Global_LCD);
-
-	/*	update "last" value	*/
-	lastFreqmHz = freqmHz;
-}
-
-void OSC_voidDrawInfo()
-{
-	/*	wait for transfer complete	*/
-	TFT2_voidWaitCurrentDataTransfer(&Global_LCD);
-
-	/*	the string that info is stored at before drawing	*/
-	char str[128];
-
-	OSC_voidGetInfoStr(str);
-
-	Txt_voidCpyStrToStaticPixArrNormalOrientation(
-		(u8*)str, colorRed.code565, colorBlack.code565, 1,
-		Txt_HorizontalMirroring_Disabled, Txt_VerticalMirroring_Disabled,
-		0, 0, 32, 128, (u16(*)[])Global_PixArr);
-
-	/*	set screen boundaries for info image area	*/
-	TFT2_SET_X_BOUNDARIES(&Global_LCD, 0, 127);
-	TFT2_SET_Y_BOUNDARIES(&Global_LCD, NUMBER_OF_SAMPLES, 159);
-
-	/*	start data writing mode on screen	*/
-	TFT2_WRITE_CMD(&Global_LCD, TFT_CMD_MEM_WRITE);
-	TFT2_ENTER_DATA_MODE(&Global_LCD);
-
-	/*	send info image	*/
-	TFT2_voidSendPixels(
-		&Global_LCD, (u16*)Global_ImgBufferArr[0],
-		32 * 128ul);
-
-	/*	wait for transfer complete	*/
-	TFT2_voidWaitCurrentDataTransfer(&Global_LCD);
-
-	/*	set screen boundaries for full signal image area	*/
-	OSC_voidSetDisplayBoundariesForSignalArea();
 }
 
 /*******************************************************************************

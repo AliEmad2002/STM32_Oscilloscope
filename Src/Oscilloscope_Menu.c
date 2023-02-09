@@ -41,14 +41,13 @@
 extern volatile TFT2_t Global_LCD;
 extern volatile OSC_Up_Down_Target_t Global_UpDownTarget;
 extern volatile b8 Global_IsMenuOpen;
+extern volatile u8 Global_NotInUseImgBufferIndex;
+
+extern volatile u16* Global_ImgBufferArr[2];
 
 extern volatile Rotary_Encoder_t OSC_RotaryEncoder;
 
 extern void OSC_voidSetDisplayBoundariesForSignalArea(void);
-
-
-/*	pixel array of a single line	*/
-u16 menuLinePixArr[8][128];
 
 void OSC_voidUpdateMenuOnDisplay(Menu_t* menu)
 {
@@ -88,22 +87,24 @@ void OSC_voidUpdateMenuOnDisplay(Menu_t* menu)
 		/*	wait for previous transfer completion	*/
 		TFT2_voidWaitCurrentDataTransfer(&Global_LCD);
 
-		// TODO: orientation!
-		Txt_voidCpyStrToStaticPixArrNormalOrientation(
-			menu->elementArr[i].str, fontColor, bgColor, 1,
-			Txt_HorizontalMirroring_Disabled, Txt_VerticalMirroring_Disabled,
-			0, 0, 8, 128, menuLinePixArr);
+		/*	print txt on img buffer that is not in use (free of DMA usage)	*/
+		Txt_voidPrintStrOnPixArrRightOrientation(
+			menu->elementArr[i].str, fontColor, bgColor, 0, 0,
+			(u16*)Global_ImgBufferArr[Global_NotInUseImgBufferIndex],
+			8, 160);
 
 		/*	set boundaries 	*/
-		TFT2_SET_X_BOUNDARIES(&Global_LCD, 0, 127);
-		TFT2_SET_Y_BOUNDARIES(&Global_LCD, 8 * i, 8 * (i + 1));
+		TFT2_SET_X_BOUNDARIES(&Global_LCD, 128 - 8 * (i + 1), 127 - 8 * i);
+		TFT2_SET_Y_BOUNDARIES(&Global_LCD, 0, 159);
 
 		/*	start data write operation	*/
 		TFT2_WRITE_CMD(&Global_LCD, TFT_CMD_MEM_WRITE);
 		TFT2_ENTER_DATA_MODE(&Global_LCD);
 
 		/*	send	*/
-		TFT2_voidSendPixels(&Global_LCD, (u16*)menuLinePixArr, 128 * 8);
+		TFT2_voidSendPixels(
+			&Global_LCD,
+			(u16*)Global_ImgBufferArr[Global_NotInUseImgBufferIndex], 160 * 8);
 	}
 
 	/*	wait for transfer completion	*/

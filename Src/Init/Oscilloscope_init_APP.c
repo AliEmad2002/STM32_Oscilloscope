@@ -36,8 +36,12 @@
 
 extern void OSC_voidAutoCalibrate(void);
 
+extern void OSC_voidInitInfo(void);
+
 void OSC_voidInitAPP(void)
 {
+	OSC_voidInitInfo();
+
 	/*
 	 * as calling "OSC_voidAutoCalibrate()" at the first few microseconds of
 	 * the MCU program returns without setting any thing, wait before calling.
