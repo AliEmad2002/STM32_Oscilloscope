@@ -51,7 +51,7 @@
 extern volatile u32 stkTicksPerSecond;
 
 extern volatile TFT2_t Global_LCD;
-extern volatile u16 Global_PixArr[32 * SIGNAL_LINE_LENGTH];
+extern volatile u16 Global_PixArr[2 * LINES_PER_IMAGE_BUFFER * SIGNAL_LINE_LENGTH];
 extern volatile u16* Global_ImgBufferArr[2];
 
 extern volatile u16 Global_SampleBuffer[2 * NUMBER_OF_SAMPLES];
@@ -88,6 +88,9 @@ extern volatile u8 Global_Larger1;
 
 extern volatile u8 Global_Smaller2;
 extern volatile u8 Global_Larger2;
+
+extern volatile b8 Global_Ch1LastReadWasInRange;
+extern volatile b8 Global_Ch2LastReadWasInRange;
 
 extern volatile s32 Global_Offset1MicroVolts;
 extern volatile s32 Global_Offset2MicroVolts;
@@ -690,14 +693,14 @@ void OSC_voidInterpolate(void)
 (	                                                                   	      \
 	(5 * 1000000 + Global_Offset1MicroVolts) /                                \
 	Global_CurrentCh1MicroVoltsPerPix -						                  \
-	(10000000 * (s64)(v_adc)) / Global_CurrentCh1MicroVoltsPerPix / 4096 + 63 	                                                      \
+	(10000000 * (s64)(v_adc)) / Global_CurrentCh1MicroVoltsPerPix / 4096 + SIGNAL_LINE_LENGTH / 2 	                                                      \
 )
 
 #define GET_CH2_V_IN_PIXELS(v_adc)                                            \
 (	                                                                   	      \
 	(5 * 1000000 + Global_Offset2MicroVolts) /                                \
 	Global_CurrentCh2MicroVoltsPerPix -						                  \
-	(10000000 * (s64)(v_adc)) / Global_CurrentCh2MicroVoltsPerPix / 4096 + 63 	                                                      \
+	(10000000 * (s64)(v_adc)) / Global_CurrentCh2MicroVoltsPerPix / 4096 + SIGNAL_LINE_LENGTH / 2 	                                                      \
 )
 
 #define GET_V_IN_MICRO_VOLTS(v_adc)                 \
@@ -815,7 +818,7 @@ void OSC_voidInterpolate(void)
 
 #define DRAW_TIME_AXIS(imgBufferIndex)                      \
 {                                                           \
-	for (u16 i = 64; i < LINES_PER_IMAGE_BUFFER * SIGNAL_LINE_LENGTH; i+=SIGNAL_LINE_LENGTH)     \
+	for (u16 i = SIGNAL_LINE_LENGTH / 2; i < LINES_PER_IMAGE_BUFFER * SIGNAL_LINE_LENGTH; i+=SIGNAL_LINE_LENGTH)     \
 	{                                                       \
 		Global_ImgBufferArr[(imgBufferIndex)][i] =          \
 			LCD_AXIS_DRAWING_COLOR_U16;                     \
@@ -831,14 +834,14 @@ void OSC_voidInterpolate(void)
 	/*	if channel is enabled and offset is in displayable range	*/  \
 	if (                                                                \
 		Global_IsCh1Enabled &&                                          \
-		CONVERT_UV_TO_PIX_CH1(Global_Offset1MicroVolts) + 63 >          \
+		CONVERT_UV_TO_PIX_CH1(Global_Offset1MicroVolts) + SIGNAL_LINE_LENGTH / 2 >          \
 		OFFSET_POINTER_LEN &&                                           \
-		CONVERT_UV_TO_PIX_CH1(Global_Offset1MicroVolts) + 63 <          \
+		CONVERT_UV_TO_PIX_CH1(Global_Offset1MicroVolts) + SIGNAL_LINE_LENGTH / 2 <          \
 		SIGNAL_LINE_LENGTH - OFFSET_POINTER_LEN                                        \
 	)                                                                   \
 	{                                                                   \
 		u8 start =                                                      \
-			CONVERT_UV_TO_PIX_CH1(Global_Offset1MicroVolts) + 63 -      \
+			CONVERT_UV_TO_PIX_CH1(Global_Offset1MicroVolts) + SIGNAL_LINE_LENGTH / 2 -      \
 			OFFSET_POINTER_LEN / 2;                                     \
 		u8 n = OFFSET_POINTER_LEN;                                      \
 		for (u8 j = 0; j < OFFSET_POINTER_LEN / 2 + 1; j++)             \
@@ -859,14 +862,14 @@ void OSC_voidInterpolate(void)
 	/*	if channel is enabled and offset is in displayable range	*/  \
 	if (                                                                \
 		Global_IsCh2Enabled &&                                          \
-		CONVERT_UV_TO_PIX_CH2(Global_Offset2MicroVolts) + 63 >          \
+		CONVERT_UV_TO_PIX_CH2(Global_Offset2MicroVolts) + SIGNAL_LINE_LENGTH / 2 >          \
 		OFFSET_POINTER_LEN &&                                           \
-		CONVERT_UV_TO_PIX_CH2(Global_Offset2MicroVolts) + 63 <          \
+		CONVERT_UV_TO_PIX_CH2(Global_Offset2MicroVolts) + SIGNAL_LINE_LENGTH / 2 <          \
 		SIGNAL_LINE_LENGTH - OFFSET_POINTER_LEN                                        \
 	)                                                                   \
 	{                                                                   \
 		u8 start =                                                      \
-			CONVERT_UV_TO_PIX_CH2(Global_Offset2MicroVolts) + 63 -      \
+			CONVERT_UV_TO_PIX_CH2(Global_Offset2MicroVolts) + SIGNAL_LINE_LENGTH / 2 -      \
 			OFFSET_POINTER_LEN / 2;                                     \
 		u8 n = OFFSET_POINTER_LEN;                                      \
 		for (u8 j = 0; j < OFFSET_POINTER_LEN / 2 + 1; j++)             \
@@ -880,6 +883,30 @@ void OSC_voidInterpolate(void)
 			n -= 2;                                                     \
 		}                                                               \
 	}                                                                   \
+}
+
+#define IS_PIX_IN_DISPLAYABLE_RANGE(pix)	\
+(                                           \
+	currentRead1Pix >= SIGNAL_IMG_X_MIN &&  \
+	currentRead1Pix < SIGNAL_LINE_LENGTH    \
+)
+
+#define CHOP_X_VALUE(xVal)                      \
+{                                               \
+	if ((xVal) < 0)                             \
+		(xVal) = 0;                             \
+                                                \
+	else if ((xVal) >= NUMBER_OF_SAMPLES)       \
+		(xVal) = NUMBER_OF_SAMPLES - 1;         \
+}
+
+#define CHOP_Y_VALUE(yVal)                      \
+{                                               \
+	if ((yVal) < 0)                             \
+		(yVal) = 0;                             \
+                                                \
+	else if ((yVal) >= SIGNAL_LINE_LENGTH)      			    \
+		(yVal) = SIGNAL_LINE_LENGTH - 1;       			    \
 }
 
 void OSC_voidSetDisplayBoundariesForSignalArea(void)
@@ -942,65 +969,78 @@ void OSC_voidDrawNormalModeFrame(void)
 		/*	Draw/process image buffer number 'j'	*/
 		for (u8 i = 0; i < LINES_PER_IMAGE_BUFFER; i++)
 		{
-			/*	read ADC converted value and check range	*/
 			if (Global_IsCh1Enabled)
 			{
+				/*	read ADC converted value	*/
 				currentRead1Pix =
 					GET_CH1_V_IN_PIXELS(Global_SampleBuffer[2 * readCount]);
-			}
 
-			if (currentRead1Pix < SIGNAL_IMG_X_MIN || currentRead1Pix > SIGNAL_IMG_X_MAX)
-				isRead1InRange = false;
-			else
-				isRead1InRange = true;
+				/*	check range of display	*/
+				isRead1InRange = IS_PIX_IN_DISPLAYABLE_RANGE(currentRead1Pix);
+
+				/*
+				 * if last reading was in range, and this one was no, chop this
+				 * one.
+				 */
+				if (!isRead1InRange && Global_Ch1LastReadWasInRange)
+					CHOP_Y_VALUE(currentRead1Pix);
+
+				/*	peak to peak calculation	*/
+				WRITE_IF_SMALLER(Global_Ch1MinValueInCurrentFrame, currentRead1Pix);
+				WRITE_IF_LARGER(Global_Ch1MaxValueInCurrentFrame, currentRead1Pix);
+
+				/*	sort readings and previous readings	 */
+				if (isRead1InRange || Global_Ch1LastReadWasInRange)
+				{
+					Global_Smaller1 = GET_SMALLER(currentRead1Pix, Global_LastRead1);
+					Global_Larger1 = GET_LARGER(currentRead1Pix, Global_LastRead1);
+					Global_LastRead1 = currentRead1Pix;
+
+					/*	draw main color from "smaller1" to "larger1"	*/
+					FILL_SEGMENT(
+						imgBufferIndex, i, Global_Smaller1, Global_Larger1,
+						LCD_MAIN_DRAWING_COLOR_U16);
+				}
+
+				/*	update "in_range" flag	*/
+				Global_Ch1LastReadWasInRange = isRead1InRange;
+			}
 
 			if (Global_IsCh2Enabled)
 			{
+				/*	read ADC converted value	*/
 				currentRead2Pix =
 					GET_CH2_V_IN_PIXELS(Global_SampleBuffer[2 * readCount + 1]);
-			}
 
-			if (currentRead2Pix < SIGNAL_IMG_X_MIN || currentRead2Pix > SIGNAL_IMG_X_MIN)
-				isRead2InRange = false;
-			else
-				isRead2InRange = true;
+				/*	check range of display	*/
+				isRead2InRange = IS_PIX_IN_DISPLAYABLE_RANGE(currentRead2Pix);
 
-			/*	peak to peak calculation	*/
-			WRITE_IF_SMALLER(Global_Ch1MinValueInCurrentFrame, currentRead1Pix);
-			WRITE_IF_LARGER(Global_Ch1MaxValueInCurrentFrame, currentRead1Pix);
+				/*
+				 * if last reading was in range, and this one was no, chop this
+				 * one.
+				 */
+				if (!isRead2InRange && Global_Ch2LastReadWasInRange)
+					CHOP_Y_VALUE(currentRead2Pix);
 
-			WRITE_IF_SMALLER(Global_Ch2MinValueInCurrentFrame, currentRead2Pix);
-			WRITE_IF_LARGER(Global_Ch2MaxValueInCurrentFrame, currentRead2Pix);
+				/*	peak to peak calculation	*/
+				WRITE_IF_SMALLER(Global_Ch2MinValueInCurrentFrame, currentRead2Pix);
+				WRITE_IF_LARGER(Global_Ch2MaxValueInCurrentFrame, currentRead2Pix);
 
-			/*	sort readings and previous readings	 */
-			if (Global_IsCh1Enabled && isRead1InRange)
-			{
-				Global_Smaller1 = GET_SMALLER(currentRead1Pix, Global_LastRead1);
-				Global_Larger1 = GET_LARGER(currentRead1Pix, Global_LastRead1);
-				Global_LastRead1 = currentRead1Pix;
-			}
+				/*	sort readings and previous readings	 */
+				if (isRead2InRange || Global_Ch2LastReadWasInRange)
+				{
+					Global_Smaller2 = GET_SMALLER(currentRead2Pix, Global_LastRead2);
+					Global_Larger2 = GET_LARGER(currentRead2Pix, Global_LastRead2);
+					Global_LastRead2 = currentRead2Pix;
 
-			if (Global_IsCh2Enabled && isRead2InRange)
-			{
-				Global_Smaller2 = GET_SMALLER(currentRead2Pix, Global_LastRead2);
-				Global_Larger2 = GET_LARGER(currentRead2Pix, Global_LastRead2);
-				Global_LastRead2 = currentRead2Pix;
-			}
+					/*	draw secondary color from "smaller2" to "larger2"	*/
+					FILL_SEGMENT(
+						imgBufferIndex, i, Global_Smaller2, Global_Larger2,
+						LCD_SECONDARY_DRAWING_COLOR_U16);
+				}
 
-			/*	draw secondary color from "smaller2" to "larger2"	*/
-			if (Global_IsCh2Enabled && isRead2InRange)
-			{
-				FILL_SEGMENT(
-					imgBufferIndex, i, Global_Smaller2, Global_Larger2,
-					LCD_SECONDARY_DRAWING_COLOR_U16);
-			}
-
-			/*	draw main color from "smaller1" to "larger1"	*/
-			if (Global_IsCh1Enabled && isRead1InRange)
-			{
-				FILL_SEGMENT(
-					imgBufferIndex, i, Global_Smaller1, Global_Larger1,
-					LCD_MAIN_DRAWING_COLOR_U16);
+				/*	update "in_range" flag	*/
+				Global_Ch2LastReadWasInRange = isRead2InRange;
 			}
 
 			/*	draw time cursors (if any)	*/
@@ -1067,24 +1107,6 @@ void OSC_voidDrawNormalModeFrame(void)
 /*******************************************************************************
  * X-Y mode frame generation:
  ******************************************************************************/
-#define CHOP_X_VALUE(xVal)                      \
-{                                               \
-	if ((xVal) < 0)                             \
-		(xVal) = 0;                             \
-                                                \
-	else if ((xVal) >= NUMBER_OF_SAMPLES)       \
-		(xVal) = NUMBER_OF_SAMPLES - 1;         \
-}
-
-#define CHOP_Y_VALUE(yVal)                      \
-{                                               \
-	if ((yVal) < 0)                             \
-		(yVal) = 0;                             \
-                                                \
-	else if ((yVal) >= SIGNAL_LINE_LENGTH)      			    \
-		(yVal) = SIGNAL_LINE_LENGTH - 1;       			    \
-}
-
 void OSC_voidDrawXYModeFrame(void)
 {
 	/*	clear display (fill with BG color)	*/
@@ -1137,14 +1159,14 @@ void OSC_voidMainSuperLoop(void)
 			OSC_voidOpenMainMenu();
 		}
 
-		/*	if info drawing time has passed, draw info	*/
-		if (STK_u64GetElapsedTicks() - lastInfoDrawTime > infoDrawPeriod)
-		{
-			/*	draw info on screen	*/
-			OSC_voidDrawInfo();
-			/*	update timestamp	*/
-			lastInfoDrawTime = STK_u64GetElapsedTicks();
-		}
+//		/*	if info drawing time has passed, draw info	*/
+//		if (STK_u64GetElapsedTicks() - lastInfoDrawTime > infoDrawPeriod)
+//		{
+//			/*	draw info on screen	*/
+//			OSC_voidDrawInfo();
+//			/*	update timestamp	*/
+//			lastInfoDrawTime = STK_u64GetElapsedTicks();
+//		}
 
 		/*	only if device is not paused, take new samples	*/
 		if (!Global_Paused)

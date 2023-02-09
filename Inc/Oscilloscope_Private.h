@@ -46,11 +46,9 @@ typedef enum{
  * ("DASHED_LINE_DRAWN_SEGMENT_LEN" + "DASHED_LINE_BLANK_SEGMENT_LEN") must be
  * dividable by "LINES_PER_IMAGE_BUFFER"
  */
+#define LINES_PER_IMAGE_BUFFER								16
 
-#define LINES_PER_IMAGE_BUFFER								15
-
-/*	By test, this number better be dividable by 3	*/
-#define NUMBER_OF_IMAGE_BUFFERS_PER_FRAME					8
+#define NUMBER_OF_IMAGE_BUFFERS_PER_FRAME					10
 
 #define NUMBER_OF_SAMPLES	\
 	(LINES_PER_IMAGE_BUFFER * NUMBER_OF_IMAGE_BUFFERS_PER_FRAME)

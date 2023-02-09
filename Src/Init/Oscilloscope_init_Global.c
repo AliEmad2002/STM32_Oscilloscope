@@ -57,6 +57,8 @@ extern volatile u8 Global_Larger2;
 extern volatile s32 Global_Offset1MicroVolts;
 extern volatile s32 Global_Offset2MicroVolts;
 extern volatile OSC_RunningMode_t Global_CurrentRunningMode;
+extern volatile b8 Global_Ch1LastReadWasInRange;
+extern volatile b8 Global_Ch2LastReadWasInRange;
 
 extern volatile OSC_Cursor_t Cursor_v1;
 extern volatile OSC_Cursor_t Cursor_v2;
