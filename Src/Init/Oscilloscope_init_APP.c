@@ -33,6 +33,7 @@
 #include "Oscilloscope_Private.h"
 #include "Oscilloscope_init_APP.h"
 
+extern volatile TFT2_t Global_LCD;
 
 extern void OSC_voidAutoCalibrate(void);
 
@@ -50,6 +51,9 @@ void OSC_voidInitAPP(void)
 
 	/*	Auto calibrate voltage per div, voltage gain and time per div	*/
 	OSC_voidAutoCalibrate();
+
+	/*	clear display (fill with black color)	*/
+	TFT2_voidClearDisplay(&Global_LCD);
 }
 
 

@@ -13,6 +13,7 @@
 #include "Img_interface.h"
 #include "Colors.h"
 #include "Delay_interface.h"
+#include "math.h"
 
 /*	MCAL	*/
 #include "RCC_interface.h"
@@ -53,23 +54,45 @@ void OSC_voidInitTFT(void)
 
 void OSC_voidDisplayStartupScreeen(void)
 {
-	/*	set bounds	*/
-	TFT2_SET_X_BOUNDARIES(&Global_LCD, 0, 127);
-	TFT2_SET_Y_BOUNDARIES(&Global_LCD, 0, 159);
 
-	/*	start data write operation	*/
-	TFT2_WRITE_CMD(&Global_LCD, TFT_CMD_MEM_WRITE);
+	/*	clear display (fill with black color)	*/
+	TFT2_voidClearDisplay(&Global_LCD);
 
-	TFT2_ENTER_DATA_MODE(&Global_LCD);
+	/*	draw time axis	*/
+	for (u8 i = 0; i < 160; i++)
+	{
+		TFT2_SET_PIXEL(&Global_LCD, 128 / 2, i, LCD_AXIS_DRAWING_COLOR_U16);
+		Delay_voidBlockingDelayMs(2);
+	}
 
-	/*	DMA send	*/
-	TFT2_voidFillDMA(&Global_LCD, &colorBlackU8Val, 128 * 160);
+	/*	draw voltage axis	*/
+	for (u8 i = 0; i < 128; i++)
+	{
+		TFT2_SET_PIXEL(&Global_LCD, i, 160 / 2 - 1, LCD_AXIS_DRAWING_COLOR_U16);
+		Delay_voidBlockingDelayMs(2);
+	}
 
-	/*	wait for DMA to get done and clear flags	*/
-	TFT2_voidWaitCurrentDataTransfer(&Global_LCD);
+//	/*	draw 1.25 of a sine wave on 70% of the display	*/
+//	u8 lastX = 64;
+//	for (u8 y = 0; y < 112; y++)
+//	{
+//		u8 x = 64 + 45.0 * sin(2.0 * M_PI / 45.0 * (d64)y);
+//
+//		/*	connect x, lastX	*/
+//
+//
+//		TFT2_SET_PIXEL(&Global_LCD, x, y, LCD_MAIN_DRAWING_COLOR_U16);
+//		Delay_voidBlockingDelayMs(1);
+//	}
+//
+//
+//	/*	draw line after that sine	*/
 
 	/*	give user time to see startup screen	*/
-	Delay_voidBlockingDelayMs(LCD_STARTUP_SCREEN_DELAY_MS);
+	//Delay_voidBlockingDelayMs(LCD_STARTUP_SCREEN_DELAY_MS);
+
+	/*	clear display (fill with black color)	*/
+	//TFT2_voidClearDisplay(&Global_LCD);
 }
 
 void OSC_voidInitHAL(void)
