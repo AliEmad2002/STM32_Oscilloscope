@@ -691,14 +691,14 @@ inline void OSC_voidTakeNewSamples(void)
 #define GET_CH1_V_IN_PIXELS(v_adc)                                            \
 (	                                                                   	      \
 	(5 * 1000000 + Global_Offset1MicroVolts) /                                \
-	Global_CurrentCh1MicroVoltsPerPix -						                  \
+	(s32)Global_CurrentCh1MicroVoltsPerPix -						                  \
 	(10000000 * (s64)(v_adc)) / Global_CurrentCh1MicroVoltsPerPix / 4096 + SIGNAL_LINE_LENGTH / 2 	                                                      \
 )
 
 #define GET_CH2_V_IN_PIXELS(v_adc)                                            \
 (	                                                                   	      \
 	(5 * 1000000 + Global_Offset2MicroVolts) /                                \
-	Global_CurrentCh2MicroVoltsPerPix -						                  \
+	(s32)Global_CurrentCh2MicroVoltsPerPix -						                  \
 	(10000000 * (s64)(v_adc)) / Global_CurrentCh2MicroVoltsPerPix / 4096 + SIGNAL_LINE_LENGTH / 2 	                                                      \
 )
 
@@ -801,18 +801,20 @@ inline void OSC_voidTakeNewSamples(void)
 	}                                                            \
 }
 
-#define DRAW_VOLTAGE_CURSOR(pos, color)			        \
-{                                                                       \
-	for (u8 i = 0; i < LINES_PER_IMAGE_BUFFER; i += SUM_OF_DASH_LEN)    \
-	{                                                                   \
-		for (u8 k = 0; k < 3; k++)                                      \
-		{                                                               \
-			u16 index = (i + k) * SIGNAL_LINE_LENGTH + (pos);                          \
-                                                                        \
-			Global_ImgBufferArr[Global_NotInUseImgBufferIndex][index] =              \
-				(color);                      							\
-		}                                                               \
-	}                                                                   \
+#define DRAW_VOLTAGE_CURSOR(pos, color)	                               \
+{                                                                      \
+	for (u8 i = 0;i < LINES_PER_IMAGE_BUFFER; i += SUM_OF_DASH_LEN)                              \
+	{                                                                  \
+		for (u8 k = 0; k < DASHED_LINE_DRAWN_SEGMENT_LEN; k++)                                     \
+		{                                                              \
+			u16 index = (i + k) * SIGNAL_LINE_LENGTH + (pos);          \
+                                                                       \
+			if (index >= IMG_BUFFER_SIZE)                       \
+				break;                                \
+			Global_ImgBufferArr[Global_NotInUseImgBufferIndex][index] =\
+				(color);                      						   \
+		}                                                              \
+	}                                                                  \
 }
 
 #define DRAW_TIME_AXIS                      \
@@ -886,8 +888,8 @@ inline void OSC_voidTakeNewSamples(void)
 
 #define IS_PIX_IN_DISPLAYABLE_RANGE(pix)	\
 (                                           \
-	currentRead1Pix >= SIGNAL_IMG_X_MIN &&  \
-	currentRead1Pix < SIGNAL_LINE_LENGTH    \
+	pix >= SIGNAL_IMG_X_MIN &&  \
+	pix < SIGNAL_LINE_LENGTH    \
 )
 
 #define CHOP_X_VALUE(xVal)                      \

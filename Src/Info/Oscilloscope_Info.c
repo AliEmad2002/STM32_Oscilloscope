@@ -36,53 +36,204 @@
 #include "TFT_interface_V2.h"
 
 /*	SELF	*/
+#include "Oscilloscope_Private.h"
+#include "Oscilloscope_Cursor.h"
 #include "Oscilloscope_config.h"
 #include "Oscilloscope_Info.h"
 
+/*	global variables extern	*/
 extern volatile TFT2_t Global_LCD;
 extern volatile char Global_Str[128];
-
 extern volatile u16* Global_ImgBufferArr[2];
-
 extern volatile u8 Global_NotInUseImgBufferIndex;
+extern volatile b8 Global_Paused;
+extern volatile u8 Global_Ch1PeakToPeakValueInCurrentFrame;
+extern volatile u8 Global_Ch1MinValueInCurrentFrame;
+extern volatile u8 Global_Ch1MaxValueInCurrentFrame;
+extern volatile u8 Global_Ch2PeakToPeakValueInCurrentFrame;
+extern volatile u8 Global_Ch2MinValueInCurrentFrame;
+extern volatile u8 Global_Ch2MaxValueInCurrentFrame;
+extern volatile u32 Global_CurrentCh1MicroVoltsPerPix;
+extern volatile u32 Global_CurrentCh2MicroVoltsPerPix;
+extern volatile u64 Global_CurrentNanoSecondsPerPix;
+extern volatile s32 Global_Offset1MicroVolts;
+extern volatile s32 Global_Offset2MicroVolts;
 
+extern volatile OSC_Cursor_t Cursor_v1;
+extern volatile OSC_Cursor_t Cursor_v2;
+extern volatile OSC_Cursor_t Cursor_t1;
+extern volatile OSC_Cursor_t Cursor_t2;
+
+/*	set boundaries function (from Oscilloscope_program.c)	*/
 extern void OSC_voidSetDisplayBoundariesForSignalArea(void);
 
+/*	global info array. Used in this file only	*/
 OSC_Info_t Global_InfoArr[NUMBER_OF_INFO];
 
 #define START_INDEX_OF_CH2_INFO		6
 #define START_INDEX_OF_OTHER_INFO	(START_INDEX_OF_CH2_INFO * 2)
 
-u64 fooCallback(void)
+/**	Callbacks	**/
+/*	freq1	*/
+s64 OSC_s64GetFreq1Info(void)
 {
-	return 15;
+	static u64 lastFreqMeasureBeforePause = 0;
+
+	if (!Global_Paused)
+	{
+		u64 freqmHz;
+		if (
+			TIM_GET_STATUS_FLAG(
+				FREQ_MEASURE_CH1_TIMER_UNIT_NUMBER, TIM_Status_CC1)
+		)
+			lastFreqMeasureBeforePause =
+				TIM_u64GetFrequencyMeasured(FREQ_MEASURE_CH1_TIMER_UNIT_NUMBER);
+	}
+
+	return lastFreqMeasureBeforePause * 1e6;
 }
 
+/*	freq2	*/
+s64 OSC_s64GetFreq2Info(void)
+{
+	static u64 lastFreqMeasureBeforePause = 0;
+
+	if (!Global_Paused)
+	{
+		u64 freqmHz;
+		if (
+			TIM_GET_STATUS_FLAG(
+				FREQ_MEASURE_CH2_TIMER_UNIT_NUMBER, TIM_Status_CC1)
+		)
+			lastFreqMeasureBeforePause =
+				TIM_u64GetFrequencyMeasured(FREQ_MEASURE_CH2_TIMER_UNIT_NUMBER);
+	}
+
+	return lastFreqMeasureBeforePause * 1e6;
+}
+
+/*	vpp1	*/
+s64 OSC_s64GetVpp1Info(void)
+{
+	return
+		Global_Ch1PeakToPeakValueInCurrentFrame *
+		Global_CurrentCh1MicroVoltsPerPix * 1e3;
+}
+
+/*	vpp2	*/
+s64 OSC_s64GetVpp2Info(void)
+{
+	return
+		Global_Ch2PeakToPeakValueInCurrentFrame *
+		Global_CurrentCh2MicroVoltsPerPix * 1e3;
+}
+
+/*	vMin1	*/
+s64 OSC_s64GetVmin1Info(void)
+{
+	return
+		((Global_Ch1MinValueInCurrentFrame - SIGNAL_LINE_LENGTH / 2) *
+		Global_CurrentCh1MicroVoltsPerPix - Global_Offset1MicroVolts) * 1e3;
+}
+
+/*	vMin2	*/
+s64 OSC_s64GetVmin2Info(void)
+{
+	return
+		((Global_Ch2MinValueInCurrentFrame - SIGNAL_LINE_LENGTH / 2) *
+		Global_CurrentCh2MicroVoltsPerPix - Global_Offset2MicroVolts) * 1e3;
+}
+
+/*	vMax1	*/
+s64 OSC_s64GetVmax1Info(void)
+{
+	return
+		((Global_Ch1MaxValueInCurrentFrame - SIGNAL_LINE_LENGTH / 2) *
+		Global_CurrentCh1MicroVoltsPerPix - Global_Offset1MicroVolts) * 1e3;
+}
+
+/*	vMax2	*/
+s64 OSC_s64GetVmax2Info(void)
+{
+	return
+		((Global_Ch2MaxValueInCurrentFrame - SIGNAL_LINE_LENGTH / 2) *
+		Global_CurrentCh2MicroVoltsPerPix - Global_Offset2MicroVolts) * 1e3;
+}
+
+/*	vAvg1	*/
+s64 OSC_s64GetVavg1Info(void)
+{
+	return (OSC_s64GetVmax1Info() - OSC_s64GetVmin1Info()) / 2;
+}
+
+/*	vAvg2	*/
+s64 OSC_s64GetVavg2Info(void)
+{
+	return (OSC_s64GetVmax2Info() - OSC_s64GetVmin2Info()) / 2;
+}
+
+/*	vDiv1	*/
+s64 OSC_s64GetVdiv1Info(void)
+{
+	return Global_CurrentCh1MicroVoltsPerPix * PIXELS_PER_VOLTAGE_DIV * 1e3;
+}
+
+/*	vDiv2	*/
+s64 OSC_s64GetVdiv2Info(void)
+{
+	return Global_CurrentCh2MicroVoltsPerPix * PIXELS_PER_VOLTAGE_DIV * 1e3;
+}
+
+/*	tDiv	*/
+s64 OSC_s64GetTdivInfo(void)
+{
+	return Global_CurrentNanoSecondsPerPix * PIXELS_PER_TIME_DIV;
+}
+
+/*	t1	*/
+s64 OSC_s64GetT1Info(void)
+{
+	return Cursor_t1.pos * Global_CurrentNanoSecondsPerPix;
+}
+
+/*	t2	*/
+s64 OSC_s64GetT2Info(void)
+{
+	return Cursor_t2.pos * Global_CurrentNanoSecondsPerPix;
+}
+
+/**	Init	**/
 void OSC_voidInitCh1Info(void)
 {
 	/*	freq	*/
 	strcpy(Global_InfoArr[0].name, "F1");
 	strcpy(Global_InfoArr[0].unit, "Hz");
+	Global_InfoArr[0].getValInNanoCallback = OSC_s64GetFreq1Info;
 
 	/*	vpp	*/
 	strcpy(Global_InfoArr[1].name, "vpp1");
 	strcpy(Global_InfoArr[1].unit, "V");
+	Global_InfoArr[1].getValInNanoCallback = OSC_s64GetVpp1Info;
 
 	/*	vMin	*/
 	strcpy(Global_InfoArr[2].name, "vMin1");
 	strcpy(Global_InfoArr[2].unit, "V");
+	Global_InfoArr[2].getValInNanoCallback = OSC_s64GetVmin1Info;
 
 	/*	vMax	*/
 	strcpy(Global_InfoArr[3].name, "vMax1");
 	strcpy(Global_InfoArr[3].unit, "V");
+	Global_InfoArr[3].getValInNanoCallback = OSC_s64GetVmax1Info;
 
 	/*	vAvg	*/
 	strcpy(Global_InfoArr[4].name, "vAvg1");
 	strcpy(Global_InfoArr[4].unit, "V");
+	Global_InfoArr[4].getValInNanoCallback = OSC_s64GetVavg1Info;
 
 	/*	volts per Div.	*/
 	strcpy(Global_InfoArr[5].name, "vDiv1");
 	strcpy(Global_InfoArr[5].unit, "V");
+	Global_InfoArr[5].getValInNanoCallback = OSC_s64GetVdiv1Info;
 }
 
 void OSC_voidInitCh2Info(void)
@@ -90,26 +241,38 @@ void OSC_voidInitCh2Info(void)
 	/*	freq	*/
 	strcpy(Global_InfoArr[START_INDEX_OF_CH2_INFO].name, "F2");
 	strcpy(Global_InfoArr[START_INDEX_OF_CH2_INFO].unit, "Hz");
+	Global_InfoArr[START_INDEX_OF_CH2_INFO].getValInNanoCallback =
+		OSC_s64GetFreq2Info;
 
 	/*	vpp	*/
 	strcpy(Global_InfoArr[START_INDEX_OF_CH2_INFO + 1].name, "vpp2");
 	strcpy(Global_InfoArr[START_INDEX_OF_CH2_INFO + 1].unit, "V");
+	Global_InfoArr[START_INDEX_OF_CH2_INFO + 1].getValInNanoCallback =
+		OSC_s64GetVpp2Info;
 
 	/*	vMin	*/
 	strcpy(Global_InfoArr[START_INDEX_OF_CH2_INFO + 2].name, "vMin2");
 	strcpy(Global_InfoArr[START_INDEX_OF_CH2_INFO + 2].unit, "V");
+	Global_InfoArr[START_INDEX_OF_CH2_INFO + 2].getValInNanoCallback =
+		OSC_s64GetVmin2Info;
 
 	/*	vMax	*/
 	strcpy(Global_InfoArr[START_INDEX_OF_CH2_INFO + 3].name, "vMax2");
 	strcpy(Global_InfoArr[START_INDEX_OF_CH2_INFO + 3].unit, "V");
+	Global_InfoArr[START_INDEX_OF_CH2_INFO + 3].getValInNanoCallback =
+		OSC_s64GetVmax2Info;
 
 	/*	vAvg	*/
 	strcpy(Global_InfoArr[START_INDEX_OF_CH2_INFO + 4].name, "vAvg2");
 	strcpy(Global_InfoArr[START_INDEX_OF_CH2_INFO + 4].unit, "V");
+	Global_InfoArr[START_INDEX_OF_CH2_INFO + 4].getValInNanoCallback =
+		OSC_s64GetVavg2Info;
 
 	/*	volts per Div.	*/
 	strcpy(Global_InfoArr[START_INDEX_OF_CH2_INFO + 5].name, "vDiv2");
 	strcpy(Global_InfoArr[START_INDEX_OF_CH2_INFO + 5].unit, "V");
+	Global_InfoArr[START_INDEX_OF_CH2_INFO + 5].getValInNanoCallback =
+		OSC_s64GetVdiv2Info;
 }
 
 void OSC_voidInitOtherInfo(void)
@@ -117,6 +280,8 @@ void OSC_voidInitOtherInfo(void)
 	/*	seconds per Div.	*/
 	strcpy(Global_InfoArr[START_INDEX_OF_OTHER_INFO].name, "tDiv");
 	strcpy(Global_InfoArr[START_INDEX_OF_OTHER_INFO].unit, "S");
+	Global_InfoArr[START_INDEX_OF_OTHER_INFO].getValInNanoCallback =
+		OSC_s64GetTdivInfo;
 
 	/*	Voltage cursors	*/
 	strcpy(Global_InfoArr[START_INDEX_OF_OTHER_INFO + 1].name, "v1");
@@ -128,16 +293,13 @@ void OSC_voidInitOtherInfo(void)
 	/*	Time cursors	*/
 	strcpy(Global_InfoArr[START_INDEX_OF_OTHER_INFO + 3].name, "t1");
 	strcpy(Global_InfoArr[START_INDEX_OF_OTHER_INFO + 3].unit, "S");
+	Global_InfoArr[START_INDEX_OF_OTHER_INFO + 3].getValInNanoCallback =
+		OSC_s64GetT1Info;
 
 	strcpy(Global_InfoArr[START_INDEX_OF_OTHER_INFO + 4].name, "t2");
 	strcpy(Global_InfoArr[START_INDEX_OF_OTHER_INFO + 4].unit, "S");
-
-	/*	user defined expressions	*/
-	strcpy(Global_InfoArr[START_INDEX_OF_OTHER_INFO + 5].name, "ex1");
-	strcpy(Global_InfoArr[START_INDEX_OF_OTHER_INFO + 5].unit, "");
-
-	strcpy(Global_InfoArr[START_INDEX_OF_OTHER_INFO + 6].name, "ex2");
-	strcpy(Global_InfoArr[START_INDEX_OF_OTHER_INFO + 6].unit, "");
+	Global_InfoArr[START_INDEX_OF_OTHER_INFO + 4].getValInNanoCallback =
+		OSC_s64GetT2Info;
 }
 
 void OSC_voidInitInfo(void)
@@ -151,17 +313,19 @@ void OSC_voidInitInfo(void)
 	/**	Other info	**/
 	OSC_voidInitOtherInfo();
 
+	/**	Disable all	**/
 	for (u8 i = 0; i < NUMBER_OF_INFO; i++)
-	{
-		Global_InfoArr[i].getValInNanoCallback = fooCallback;
 		Global_InfoArr[i].enabled = false;
-	}
 
-	for (u8 i = 0; i < 4; i++)
-	{
-		Global_InfoArr[i].enabled = true;
-	}
-
+	/**	Default enable	**/
+	/*	freq1	*/
+	Global_InfoArr[0].enabled = true;
+	/*	vpp1	*/
+	Global_InfoArr[1].enabled = true;
+	/*	freq2	*/
+	Global_InfoArr[START_INDEX_OF_CH2_INFO].enabled = true;
+	/*	vpp2	*/
+	Global_InfoArr[START_INDEX_OF_CH2_INFO + 1].enabled = true;
 }
 
 void OSC_voidEnableInfo(u8 infoIndex)
