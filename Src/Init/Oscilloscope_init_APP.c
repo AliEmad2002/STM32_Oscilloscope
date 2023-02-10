@@ -38,10 +38,13 @@ extern volatile TFT2_t Global_LCD;
 extern void OSC_voidAutoCalibrate(void);
 
 extern void OSC_voidInitInfo(void);
+extern void OSC_voidInitInfoCheckList(void);
 
 void OSC_voidInitAPP(void)
 {
 	OSC_voidInitInfo();
+
+	OSC_voidInitInfoCheckList();
 
 	/*
 	 * as calling "OSC_voidAutoCalibrate()" at the first few microseconds of

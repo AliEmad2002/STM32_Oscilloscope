@@ -18,6 +18,7 @@
 #include "Txt_interface.h"
 #include <stdio.h>
 #include <stdlib.h>
+#include <string.h>
 
 /*	MCAL	*/
 #include "RCC_interface.h"
@@ -67,7 +68,7 @@ extern volatile OSC_Cursor_t Cursor_t2;
 /*	set boundaries function (from Oscilloscope_program.c)	*/
 extern void OSC_voidSetDisplayBoundariesForSignalArea(void);
 
-/*	global info array. Used in this file only	*/
+/*	global info array	*/
 OSC_Info_t Global_InfoArr[NUMBER_OF_INFO];
 
 #define START_INDEX_OF_CH2_INFO		6
@@ -91,6 +92,16 @@ s64 OSC_s64GetFreq1Info(void)
 	}
 
 	return lastFreqMeasureBeforePause * 1e6;
+}
+
+void OSC_voidEnableFreq1Info(void)
+{
+	Global_InfoArr[0].enabled = true;
+}
+
+void OSC_voidDisableFreq1Info(void)
+{
+	Global_InfoArr[0].enabled = true;
 }
 
 /*	freq2	*/
@@ -291,15 +302,15 @@ void OSC_voidInitOtherInfo(void)
 	strcpy(Global_InfoArr[START_INDEX_OF_OTHER_INFO + 2].unit, "V");
 
 	/*	Time cursors	*/
-	strcpy(Global_InfoArr[START_INDEX_OF_OTHER_INFO + 3].name, "t1");
+	/*strcpy(Global_InfoArr[START_INDEX_OF_OTHER_INFO + 3].name, "t1");
 	strcpy(Global_InfoArr[START_INDEX_OF_OTHER_INFO + 3].unit, "S");
 	Global_InfoArr[START_INDEX_OF_OTHER_INFO + 3].getValInNanoCallback =
-		OSC_s64GetT1Info;
+		OSC_s64GetT1Info;*/
 
-	strcpy(Global_InfoArr[START_INDEX_OF_OTHER_INFO + 4].name, "t2");
+	/*strcpy(Global_InfoArr[START_INDEX_OF_OTHER_INFO + 4].name, "t2");
 	strcpy(Global_InfoArr[START_INDEX_OF_OTHER_INFO + 4].unit, "S");
 	Global_InfoArr[START_INDEX_OF_OTHER_INFO + 4].getValInNanoCallback =
-		OSC_s64GetT2Info;
+		OSC_s64GetT2Info;*/
 }
 
 void OSC_voidInitInfo(void)

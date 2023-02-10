@@ -11,7 +11,7 @@
 #define MAX_NAME_LEN	6
 #define MAX_UNIT_LEN	3
 
-#define NUMBER_OF_INFO	19
+#define NUMBER_OF_INFO	15
 
 typedef struct{
 	s64 (*getValInNanoCallback)(void);

@@ -201,10 +201,12 @@ static Menu_t cursorMenu = {
 	}
 };
 
+extern Check_List_t Global_infoCheckList;
+
 static Menu_t mainMenu = {
 	.currentSelected = 0,
 
-	.numberOfElements = 5,
+	.numberOfElements = 6,
 
 	.elementArr[0] = {
 		" Change division", Menu_ElementType_SubMenu, &changeDivMenu
@@ -225,6 +227,11 @@ static Menu_t mainMenu = {
 	.elementArr[4] = {
 		" Change brightness", Menu_ElementType_Callback,
 		OSC_voidSelectChangeBrightness
+	},
+
+	.elementArr[5] = {
+		" En/Dis Info", Menu_ElementType_CheckList,
+		&Global_infoCheckList
 	}
 };
 

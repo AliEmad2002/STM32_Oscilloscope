@@ -132,6 +132,9 @@ static const u64 OSC_nSecondsPerDivArr[NUMBER_OF_TIME_DIVS] = {
  */
 #define FREQ_MEASURE_TIMEOUT_MS						1000
 
+#define CHECKED_SYMBOL_ASCII_CODE		253
+#define UNCHECKED_SYMBOL_ASCII_CODE		' '
+
 #endif /* OSCILLOSCOPE_CONFIG_H_ */
 
 
