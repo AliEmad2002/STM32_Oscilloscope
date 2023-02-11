@@ -212,7 +212,7 @@ Menu_t* OSC_PtrInitCursorMenu(char* returnStr)
 	static const char str1[] = " Select Cursor";
 	elementArr[1].str = (char*)str1;
 	elementArr[1].type = Menu_ElementType_SubMenu;
-	elementArr[1].childPtr = OSC_PtrInitCusrorSelectMenu;
+	elementArr[1].childPtr = OSC_PtrInitCusrorSelectMenu();
 
 	/**	define menu	**/
 	static Menu_t menu = {
