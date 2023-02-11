@@ -11,17 +11,17 @@ STM32f103 based digital oscilloscope. 1MSPS. Dual channel (Y-t) and (Y-X) modes
 * Vertical offset.
 * Horizontal offset. (x-y mode only)
 * Two cursors per each of the axis.
-* Zooming in and out. (changing volts and seconds per division)
+* Zooming in and out. (Changing volts and seconds per division)
 
 # Features to be added (by March2022):
 * Math expression in x-y mode using "MathExpressionParser" project: https://github.com/AliEmad2002/MathExpressionParser.
 * SD card screen shot.
 * Transient capture.
 
-# Discalimer:
+# Disclaimer:
 * My main focus in this project was embedded SW and HW. Hence, the electronic circuits used are the very basic ones for the job.
 * Any ways, most of these are not needed if the MCU to use has PGA (programmable gain amplifier), and Vref pin. For example STM32L476xx.
-* Thus, better sampling is obtained using advaced external circuitry, or using MCU like the one mentioned.
+* Thus, better sampling is obtained using advanced external circuitry, or using MCU like the one mentioned.
 
 # Other repos used:
 * https://github.com/AliEmad2002/STM32F401x_10x_COTS
