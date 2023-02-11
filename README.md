@@ -19,7 +19,7 @@ STM32f103 based digital oscilloscope. 1MSPS. Dual channel (Y-t) and (Y-X) modes
 * Transient capture.
 
 # Discalimer:
-* My main focus in this project was embedded SW and HW. Hence, the electronic circuits are the very basic ones for the job.
+* My main focus in this project was embedded SW and HW. Hence, the electronic circuits used are the very basic ones for the job.
 * Any ways, these are replacable if the MCU to use has PGA (programmable gain amplifier), and Vref pin. For example STM32L476xx.
 * Thus, better sampling is obtained using advaced external circuitry, or using MCU like the one mentioned.
 
