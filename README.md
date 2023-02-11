@@ -21,7 +21,7 @@ STM32f103 based digital oscilloscope. 1MSPS. Dual channel (Y-t) and (Y-X) modes
 # Example usage:
 * Auto zoom setting, offset, votage and time per div setting:
 
-https://user-images.githubusercontent.com/99054912/218280360-2fdf3fee-2c1c-4eb7-a069-673353bc1dd2.mp4
+https://user-images.githubusercontent.com/99054912/218280562-1c704146-93bd-4b77-a6e3-f520cc0ddb4c.mp4
                                                                             
 * Cursors:
 
