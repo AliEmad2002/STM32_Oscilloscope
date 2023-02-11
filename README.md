@@ -32,5 +32,9 @@ https://user-images.githubusercontent.com/99054912/218280302-0e1fd5a7-b59d-487b-
 * Any ways, most of these are not needed if the MCU to use has PGA (programmable gain amplifier), and Vref pin. For example STM32L476xx.
 * Thus, better sampling is obtained using advanced external circuitry, or using MCU like the one mentioned.
 
+# Issues:
+* Further documentation at "issues": (check closed ones too)
+https://github.com/AliEmad2002/STM32_Oscilloscope/issues
+
 # Other repos used:
 * https://github.com/AliEmad2002/STM32F401x_10x_COTS
