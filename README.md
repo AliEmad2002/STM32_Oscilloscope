@@ -16,7 +16,7 @@ STM32f103 based digital oscilloscope. 1MSPS. Dual channel (Y-t) and (Y-X) modes
 * Math expression in x-y mode using "MathExpressionParser" project: https://github.com/AliEmad2002/MathExpressionParser.
 * SD card screen shot.
 * Transient capture.
-* Interleaved sampling. (For showing extra fast periodic signals. Explained in issues)
+* Interleaved sampling. (For showing extra fast periodic signals. Explained in issues: https://github.com/AliEmad2002/STM32_Oscilloscope/issues/12)
 
 # Disclaimer:
 * My main focus in this project was embedded SW and HW. Hence, the electronic circuits used are the very basic ones for the job.
