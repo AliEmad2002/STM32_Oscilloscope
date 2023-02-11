@@ -8,6 +8,7 @@
 #ifndef INCLUDE_APP_INIT_OSCILLOSCOPE_INIT_APP_H_
 #define INCLUDE_APP_INIT_OSCILLOSCOPE_INIT_APP_H_
 
+extern volatile TFT2_t Global_LCD;
 
 void OSC_voidInitAPP(void);
 

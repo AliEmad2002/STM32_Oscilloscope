@@ -32,43 +32,9 @@
 #include "Oscilloscope_config.h"
 #include "Oscilloscope_Private.h"
 #include "Oscilloscope_Cursor.h"
+#include "Oscilloscope_GlobalExterns.h"
 #include "Oscilloscope_init_Global.h"
 
-/*******************************************************************************
- * Extern global variables (from private.c file):
- ******************************************************************************/
-extern volatile u8 Global_Ch1PeakToPeakValueInCurrentFrame;
-extern volatile u8 Global_Ch1MinValueInCurrentFrame;
-extern volatile u8 Global_Ch1MaxValueInCurrentFrame;
-extern volatile u8 Global_Ch2PeakToPeakValueInCurrentFrame;
-extern volatile u8 Global_Ch2MinValueInCurrentFrame;
-extern volatile u8 Global_Ch2MaxValueInCurrentFrame;
-extern volatile b8 Global_Paused;
-extern volatile OSC_Up_Down_Target_t Global_UpDownTarget;
-extern volatile b8 Global_IsMenuOpen;
-extern volatile b8 Global_IsCh1Enabled;
-extern volatile b8 Global_IsCh2Enabled;
-extern volatile u8 Global_LastRead1;
-extern volatile u8 Global_LastRead2;
-extern volatile u8 Global_Smaller1;
-extern volatile u8 Global_Larger1;
-extern volatile u8 Global_Smaller2;
-extern volatile u8 Global_Larger2;
-extern volatile s32 Global_Offset1MicroVolts;
-extern volatile s32 Global_Offset2MicroVolts;
-extern volatile OSC_RunningMode_t Global_CurrentRunningMode;
-extern volatile b8 Global_Ch1LastReadWasInRange;
-extern volatile b8 Global_Ch2LastReadWasInRange;
-extern volatile u8 Global_NotInUseImgBufferIndex;
-
-extern volatile OSC_Cursor_t Cursor_v1;
-extern volatile OSC_Cursor_t Cursor_v2;
-extern volatile OSC_Cursor_t Cursor_t1;
-extern volatile OSC_Cursor_t Cursor_t2;
-
-/*******************************************************************************
- * Function declaration:
- ******************************************************************************/
 void OSC_voidInitGlobal(void)
 {
 	Global_Ch1PeakToPeakValueInCurrentFrame = 0;

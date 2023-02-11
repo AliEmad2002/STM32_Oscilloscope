@@ -24,22 +24,16 @@
 #include "EXTI_interface.h"
 #include "ADC_interface.h"
 
-/*
- * HAL
- * (for 'Oscilloscope_Private.h' dependency
- */
+/*	HAL	*/
 #include "TFT_interface_V2.h"
 
 /*	SELF	*/
 #include "Oscilloscope_config.h"
 #include "Oscilloscope_Private.h"
+#include "Oscilloscope_Cursor.h"
+#include "Oscilloscope_GlobalExterns.h"
+#include "Oscilloscope_ISRs.h"
 #include "Oscilloscope_init_MCAL.h"
-
-/**	extern buttons callback functions	*/
-extern void OSC_voidTrigPauseResume(void);
-extern void OSC_voidAutoEnterMenuButtonCallback(void);
-
-extern volatile u16 Global_SampleBuffer[2 * NUMBER_OF_SAMPLES];
 
 void OSC_InitRCC(void)
 {
@@ -308,7 +302,7 @@ void OSC_InitDMA(void)
 
 	/*	set destination address	*/
 	DMA_voidSetMemoryAddress(
-		DMA_UnitNumber_1, ADC_DMA_CHANNEL, &Global_SampleBuffer[0]);
+		DMA_UnitNumber_1, ADC_DMA_CHANNEL, (u16*)&Global_SampleBuffer[0]);
 
 	/*	set number of data	*/
 	DMA_voidSetNumberOfData(

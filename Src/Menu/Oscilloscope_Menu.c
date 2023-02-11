@@ -16,6 +16,7 @@
 #include "Delay_interface.h"
 #include "diag/trace.h"
 #include "Check_List_interface.h"
+#include <stdio.h>
 
 /*	MCAL	*/
 #include "RCC_interface.h"
@@ -34,21 +35,20 @@
 #include "Rotary_Encoder_Interface.h"
 
 /*	SELF	*/
+#include "Oscilloscope_Cursor.h"
 #include "Oscilloscope_Private.h"
 #include "Oscilloscope_config.h"
+#include "Oscilloscope_GlobalExterns.h"
+#include "Oscilloscope_Info.h"
+#include "Oscilloscope_Info_Init.h"
 #include "Oscilloscope_Menu_Private.h"
 #include "Oscilloscope_Menu_Interface.h"
+#include "Oscilloscope_Menu_Init.h"
 
-extern volatile TFT2_t Global_LCD;
-extern volatile OSC_Up_Down_Target_t Global_UpDownTarget;
-extern volatile b8 Global_IsMenuOpen;
-extern volatile u8 Global_NotInUseImgBufferIndex;
-
-extern volatile u16* Global_ImgBufferArr[2];
+/*	main menu	*/
+volatile Menu_t Global_MainMenu;
 
 extern volatile Rotary_Encoder_t OSC_RotaryEncoder;
-
-extern void OSC_voidSetDisplayBoundariesForSignalArea(void);
 
 void OSC_voidOpenMainMenu(void)
 {
@@ -60,7 +60,7 @@ void OSC_voidOpenMainMenu(void)
 	EXTI_voidDisableLine(BUTTON_AUTO_ENTER_MENU_PIN % 16);
 	EXTI_voidDisableLine(BUTTON_PAUSE_RESUME_PIN % 16);
 
-	OSC_voidOpenMenu(&mainMenu);
+	OSC_voidOpenMenu((Menu_t*)&Global_MainMenu);
 
 	/**	fill the screen with background color	**/
 	/*	set boundaries (full screen)	*/
@@ -72,7 +72,7 @@ void OSC_voidOpenMainMenu(void)
 	TFT2_ENTER_DATA_MODE(&Global_LCD);
 
 	/*	draw background	*/
-	TFT2_voidFillDMA(&Global_LCD, &LCD_BACKGROUND_COLOR_U8, 128 * 160);
+	TFT2_voidFillDMA((TFT2_t*)&Global_LCD, &LCD_BACKGROUND_COLOR_U8, 128 * 160);
 
 	/*	set screen boundaries for full signal image area	*/
 	OSC_voidSetDisplayBoundariesForSignalArea();
@@ -155,7 +155,7 @@ void OSC_voidUpdateMenuOnDisplay(Menu_t* menu)
 	TFT2_ENTER_DATA_MODE(&Global_LCD);
 
 	/*	draw background	*/
-	TFT2_voidFillDMA(&Global_LCD, &LCD_BACKGROUND_COLOR_U8, 128 * 160);
+	TFT2_voidFillDMA((TFT2_t*)&Global_LCD, &LCD_BACKGROUND_COLOR_U8, 128 * 160);
 
 	/**	draw menu lines	**/
 	/*
@@ -179,7 +179,7 @@ void OSC_voidUpdateMenuOnDisplay(Menu_t* menu)
 		}
 
 		/*	wait for previous transfer completion	*/
-		TFT2_voidWaitCurrentDataTransfer(&Global_LCD);
+		TFT2_voidWaitCurrentDataTransfer((TFT2_t*)&Global_LCD);
 
 		/*	print txt on img buffer that is not in use (free of DMA usage)	*/
 		Txt_voidPrintStrOnPixArrRightOrientation(
@@ -197,14 +197,154 @@ void OSC_voidUpdateMenuOnDisplay(Menu_t* menu)
 
 		/*	send	*/
 		TFT2_voidSendPixels(
-			&Global_LCD,
+			(TFT2_t*)&Global_LCD,
 			(u16*)Global_ImgBufferArr[Global_NotInUseImgBufferIndex], 160 * 8);
 	}
 
 	/*	wait for transfer completion	*/
-	TFT2_voidWaitCurrentDataTransfer(&Global_LCD);
+	TFT2_voidWaitCurrentDataTransfer((TFT2_t*)&Global_LCD);
 }
 
+void OSC_voidOpenCheckList(Check_List_t* checkListPtr)
+{
+	/*	reset selection	*/
+
+
+	/*	show check-list on the screen	*/
+	OSC_voidUpdateCheckListOnDisplay(checkListPtr);
+
+	s32 lastRotaryCount = OSC_RotaryEncoder.count;
+
+	while(1)
+	{
+		/*	if user moves up	*/
+		if (OSC_RotaryEncoder.count > lastRotaryCount)
+		{
+			/*	select next element in check-list	*/
+			Check_List_voidSelecttNextElement(checkListPtr);
+			/*	update display	*/
+			OSC_voidUpdateCheckListOnDisplay(checkListPtr);
+			/*	update "lastRotaryCount"	*/
+			lastRotaryCount = OSC_RotaryEncoder.count;
+		}
+
+		/*	if user moves down	*/
+		if (OSC_RotaryEncoder.count < lastRotaryCount)
+		{
+			/*	select previous element in check-list	*/
+			Check_List_voidSelecttPreviousElement(checkListPtr);
+			/*	update display	*/
+			OSC_voidUpdateCheckListOnDisplay(checkListPtr);
+			/*	update "lastRotaryCount"	*/
+			lastRotaryCount = OSC_RotaryEncoder.count;
+		}
+
+		/*	if user pressed auto/enter button	*/
+		if (
+			GPIO_DIGITAL_READ(
+				BUTTON_AUTO_ENTER_MENU_PIN / 16,
+				BUTTON_AUTO_ENTER_MENU_PIN % 16))
+		{
+			/*	debouncing delay	*/
+			Delay_voidBlockingDelayMs(150);
+
+			/*	break if user selects "return"	*/
+			if (
+				checkListPtr->currentSelectedElement ==
+				checkListPtr->numberOfElements - 1
+			)
+				break;
+
+			/*
+			 * otherwise, toggle checked flag of current selected element,
+			 * and update display.
+			 */
+			CHECK_LIST_TOGGLE_CHECK(
+				checkListPtr, checkListPtr->currentSelectedElement);
+
+			OSC_voidUpdateCheckListOnDisplay(checkListPtr);
+		}
+	}
+}
+
+void OSC_voidUpdateCheckListOnDisplay(Check_List_t* checkListPtr)
+{
+	/**	fill the screen with background color	**/
+	/*	set boundaries (full screen)	*/
+	TFT2_SET_X_BOUNDARIES(&Global_LCD, 0, 127);
+	TFT2_SET_Y_BOUNDARIES(&Global_LCD, 0, 159);
+
+	/*	start data write operation	*/
+	TFT2_WRITE_CMD(&Global_LCD, TFT_CMD_MEM_WRITE);
+	TFT2_ENTER_DATA_MODE(&Global_LCD);
+
+	/*	draw background	*/
+	TFT2_voidFillDMA((TFT2_t*)&Global_LCD, &LCD_BACKGROUND_COLOR_U8, 128 * 160);
+
+	/**	draw check-list lines	**/
+	for (u8 i = 0; i < checkListPtr->numberOfElements; i++)
+	{
+		/*	if 'i'th element is hidden, continue	*/
+		if (CHECK_LIST_IS_ELEMENT_HIDDEN(checkListPtr, i))
+			continue;
+
+		u16 bgColor, fontColor;
+
+		/*
+		 * if the selected check-list element is to be drawn, invert colors.
+		 */
+		if (i == checkListPtr->currentSelectedElement)
+		{
+			bgColor = LCD_MAIN_DRAWING_COLOR_U16;
+			fontColor = LCD_BACKGROUND_COLOR_U16;
+		}
+		/*	otherwise, draw menu element normally.	*/
+		else
+		{
+			bgColor = LCD_BACKGROUND_COLOR_U16;
+			fontColor = LCD_MAIN_DRAWING_COLOR_U16;
+		}
+
+		/*	add check, not checked symbol	*/
+		if (*(checkListPtr->elementArr[i].isChecked))
+		{
+			sprintf(
+				(char*)Global_Str, "%c %s", CHECKED_SYMBOL_ASCII_CODE,
+				checkListPtr->elementArr[i].str);
+		}
+		else
+		{
+			sprintf(
+				(char*)Global_Str, "%c %s", UNCHECKED_SYMBOL_ASCII_CODE,
+				checkListPtr->elementArr[i].str);
+		}
+
+		/*	wait for previous transfer completion	*/
+		TFT2_voidWaitCurrentDataTransfer((TFT2_t*)&Global_LCD);
+
+		/*	print txt on img buffer that is not in use (free of DMA usage)	*/
+		Txt_voidPrintStrOnPixArrRightOrientation(
+			(char*)Global_Str, fontColor, bgColor, 0, 0,
+			(u16*)Global_ImgBufferArr[Global_NotInUseImgBufferIndex],
+			8, 160);
+
+		/*	set boundaries 	*/
+		TFT2_SET_X_BOUNDARIES(&Global_LCD, 128 - 8 * (i + 1), 127 - 8 * i);
+		TFT2_SET_Y_BOUNDARIES(&Global_LCD, 0, 159);
+
+		/*	start data write operation	*/
+		TFT2_WRITE_CMD(&Global_LCD, TFT_CMD_MEM_WRITE);
+		TFT2_ENTER_DATA_MODE(&Global_LCD);
+
+		/*	send	*/
+		TFT2_voidSendPixels(
+			(TFT2_t*)&Global_LCD,
+			(u16*)Global_ImgBufferArr[Global_NotInUseImgBufferIndex], 160 * 8);
+	}
+
+	/*	wait for transfer completion	*/
+	TFT2_voidWaitCurrentDataTransfer((TFT2_t*)&Global_LCD);
+}
 
 /*	callback functions	*/
 void OSC_voidSelectChangeCh1VoltageDivAsUpDownTraget(void)

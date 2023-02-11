@@ -6,7 +6,6 @@
  */
 
 /*	LIB	*/
-
 #include "Std_Types.h"
 #include "Bit_Math.h"
 #include "Debug_active.h"
@@ -34,41 +33,44 @@
 /*	SELF	*/
 #include "Oscilloscope_config.h"
 #include "Oscilloscope_Private.h"
+#include "Oscilloscope_Cursor.h"
+#include "Oscilloscope_GlobalExterns.h"
 #include "Oscilloscope_init_HAL.h"
-
-extern volatile TFT2_t Global_LCD;
 
 extern void OSC_voidSetDisplayBoundariesForSignalArea(void);
 
 void OSC_voidInitTFT(void)
 {
 	TFT2_voidInit(
-		&Global_LCD, LCD_SPI_UNIT_NUMBER, LCD_SPI_AFIO_MAP, LCD_RST_PIN, LCD_A0_PIN,
+		(TFT2_t*)&Global_LCD, LCD_SPI_UNIT_NUMBER,
+		LCD_SPI_AFIO_MAP, LCD_RST_PIN, LCD_A0_PIN,
 		LCD_BRIGHTNESS_CONTROL_TIMER_UNIT_NUMBER,
 		LCD_BRIGHTNESS_CONTROL_TIMER_CHANNEL,
 		LCD_BRIGHTNESS_CONTROL_TIMER_AFIO_MAP);
 
 	/*	set maximum brightness by default	*/
-	TFT2_voidSetBrightness(&Global_LCD, POW_TWO(15) - 1);
+	TFT2_voidSetBrightness((TFT2_t*)&Global_LCD, POW_TWO(15) - 1);
 }
 
 void OSC_voidDisplayStartupScreeen(void)
 {
 
 	/*	clear display (fill with black color)	*/
-	TFT2_voidClearDisplay(&Global_LCD);
+	TFT2_voidClearDisplay((TFT2_t*)&Global_LCD);
 
 	/*	draw time axis	*/
 	for (u8 i = 0; i < 160; i++)
 	{
-		TFT2_SET_PIXEL(&Global_LCD, 128 / 2, i, LCD_AXIS_DRAWING_COLOR_U16);
+		TFT2_SET_PIXEL(
+			&Global_LCD, 128 / 2, i, LCD_AXIS_DRAWING_COLOR_U16);
 		Delay_voidBlockingDelayMs(2);
 	}
 
 	/*	draw voltage axis	*/
 	for (u8 i = 0; i < 128; i++)
 	{
-		TFT2_SET_PIXEL(&Global_LCD, i, 160 / 2 - 1, LCD_AXIS_DRAWING_COLOR_U16);
+		TFT2_SET_PIXEL(
+			&Global_LCD, i, 160 / 2 - 1, LCD_AXIS_DRAWING_COLOR_U16);
 		Delay_voidBlockingDelayMs(2);
 	}
 

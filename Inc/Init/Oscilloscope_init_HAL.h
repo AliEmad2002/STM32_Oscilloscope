@@ -13,10 +13,6 @@ void OSC_voidInitTFT(void);
 
 void OSC_voidDisplayStartupScreeen(void);
 
-void OSC_voidInitSignalDrawing(void);
-
-void OSC_voidInitInfoDrawing(void);
-
 void OSC_voidInitHAL(void);
 
 

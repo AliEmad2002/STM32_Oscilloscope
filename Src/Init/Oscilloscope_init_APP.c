@@ -8,10 +8,11 @@
 /*	LIB	*/
 #include "Std_Types.h"
 #include "Bit_Math.h"
-#include "Debug_active.h"
 #include "Img_interface.h"
 #include "Colors.h"
 #include "Delay_interface.h"
+#include "Menu_interface.h"
+#include "Check_List_interface.h"
 
 /*	MCAL	*/
 #include "RCC_interface.h"
@@ -31,20 +32,19 @@
 /*	SELF	*/
 #include "Oscilloscope_config.h"
 #include "Oscilloscope_Private.h"
+#include "Oscilloscope_Cursor.h"
+#include "Oscilloscope_GlobalExterns.h"
+#include "Oscilloscope_Info_Init.h"
+#include "Oscilloscope_Menu_Interface.h"
+#include "Oscilloscope_Menu_Init.h"
+#include "Oscilloscope_AutoCalib.h"
 #include "Oscilloscope_init_APP.h"
-
-extern volatile TFT2_t Global_LCD;
-
-extern void OSC_voidAutoCalibrate(void);
-
-extern void OSC_voidInitInfo(void);
-extern void OSC_voidInitInfoCheckList(void);
 
 void OSC_voidInitAPP(void)
 {
-	OSC_voidInitInfo();
+	OSC_voidInitInfoArr();
 
-	OSC_voidInitInfoCheckList();
+	OSC_voidInitMainMenu();
 
 	/*
 	 * as calling "OSC_voidAutoCalibrate()" at the first few microseconds of
@@ -56,7 +56,7 @@ void OSC_voidInitAPP(void)
 	OSC_voidAutoCalibrate();
 
 	/*	clear display (fill with black color)	*/
-	TFT2_voidClearDisplay(&Global_LCD);
+	TFT2_voidClearDisplay((TFT2_t*)&Global_LCD);
 }
 
 

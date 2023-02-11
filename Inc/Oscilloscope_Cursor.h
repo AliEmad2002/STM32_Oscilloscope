@@ -14,18 +14,6 @@ typedef struct{
 	b8 isEnabled;
 }OSC_Cursor_t;
 
-/*	enable / add cursor	*/
-void OSC_voidEnableCursorV1(void);
-void OSC_voidEnableCursorV2(void);
-void OSC_voidEnableCursorT1(void);
-void OSC_voidEnableCursorT2(void);
-
-/*	disable / remove cursor	*/
-void OSC_voidDisableCursorV1(void);
-void OSC_voidDisableCursorV2(void);
-void OSC_voidDisableCursorT1(void);
-void OSC_voidDisableCursorT2(void);
-
 /*	increment cursor position (if enabled)	*/
 void OSC_voidIncrementCursorV1(void);
 void OSC_voidIncrementCursorV2(void);
