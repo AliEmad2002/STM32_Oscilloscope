@@ -7,7 +7,6 @@ STM32f103 based digital oscilloscope. 1MSPS. Dual channel (Y-t) and (Y-X) modes
 * 1 MSPS.
 * Maximum of 8V peak to peak.
 * Auto voltage and time zoom setting.
-* Interleaved sampling. (For showing extra fast periodic signals. Explained in issues)
 * Vertical offset.
 * Horizontal offset. (x-y mode only)
 * Two cursors per each of the axis.
@@ -17,6 +16,7 @@ STM32f103 based digital oscilloscope. 1MSPS. Dual channel (Y-t) and (Y-X) modes
 * Math expression in x-y mode using "MathExpressionParser" project: https://github.com/AliEmad2002/MathExpressionParser.
 * SD card screen shot.
 * Transient capture.
+* Interleaved sampling. (For showing extra fast periodic signals. Explained in issues)
 
 # Disclaimer:
 * My main focus in this project was embedded SW and HW. Hence, the electronic circuits used are the very basic ones for the job.
