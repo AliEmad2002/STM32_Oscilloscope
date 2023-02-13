@@ -225,7 +225,7 @@ u64 startTime = STK_u64GetElapsedTicks();
 	{
 		if (
 			STK_u64GetElapsedTicks() - startTime >
-			FREQ_MEASURE_TIMEOUT_MS * 72000
+			FREQ_MEASURE_TIMEOUT_MS * STK_TICKS_PER_MS
 		)
 			break;
 	}
