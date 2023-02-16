@@ -25,6 +25,10 @@ Check_List_t* OSC_PtrInitChannelEnableDisableCkeckList(char* returnStr);
 
 Check_List_t* OSC_PtrInitInfoEnableDisableCkeckList(char* returnStr);
 
+Menu_t* OSC_PtrInitMathExpressionMenu(void);
+
+Menu_t* OSC_PtrInitChangeModeMenu(void);
+
 void OSC_voidInitMainMenu(void);
 
 #endif /* INCLUDE_APP_MENU_OSCILLOSCOPE_MENU_INIT_H_ */

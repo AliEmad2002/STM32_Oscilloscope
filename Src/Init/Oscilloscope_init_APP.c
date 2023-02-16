@@ -13,6 +13,8 @@
 #include "Delay_interface.h"
 #include "Menu_interface.h"
 #include "Check_List_interface.h"
+#include "LinkedList.h"
+#include "MathParser.h"
 
 /*	MCAL	*/
 #include "RCC_interface.h"
@@ -28,6 +30,7 @@
 
 /*	HAL	*/
 #include "TFT_interface_V2.h"
+#include "IR_interface.h"
 
 /*	SELF	*/
 #include "Oscilloscope_config.h"

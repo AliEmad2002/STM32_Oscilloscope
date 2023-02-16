@@ -73,6 +73,8 @@
 #define BUTTON_DEBOUNCING_TIME_MS					250ul
 #define ROTARY_DEBOUNCING_TIME_MS					25ul
 
+#define IR_EXTI_PIN										GPIO_Pin_B4
+
 /*******************************************************************************
  * Safe thread:
  * Some routines are very critical and won't work right if they were interrupted
@@ -120,11 +122,11 @@ static const u64 OSC_nSecondsPerDivArr[NUMBER_OF_TIME_DIVS] = {
  ******************************************************************************/
 #define FREQ_MEASURE_CH1_TIMER_UNIT_NUMBER				2
 #define FREQ_MEASURE_CH1_TIMER_UNIT_AFIO_MAP			0
-#define FREQ_MEASURE_CH1_MIN_FREQ_MILLI_HZ				(1 * 40 * 1000)
+#define FREQ_MEASURE_CH1_MIN_FREQ_MILLI_HZ				(1 * 1 * 1000)
 
 #define FREQ_MEASURE_CH2_TIMER_UNIT_NUMBER				1
 #define FREQ_MEASURE_CH2_TIMER_UNIT_AFIO_MAP			0
-#define FREQ_MEASURE_CH2_MIN_FREQ_MILLI_HZ				(1 * 40 * 1000)
+#define FREQ_MEASURE_CH2_MIN_FREQ_MILLI_HZ				(1 * 1 * 1000)
 
 /*
  * Used in frequency measurement in auto calibrate function. This is the timeout
@@ -134,6 +136,69 @@ static const u64 OSC_nSecondsPerDivArr[NUMBER_OF_TIME_DIVS] = {
 
 #define CHECKED_SYMBOL_ASCII_CODE		253
 #define UNCHECKED_SYMBOL_ASCII_CODE		' '
+
+#define IR_MAX_SMALL_TIME_MS					500
+#define IR_MIN_TIME_BETWEEN_PRESSES_MS			250
+
+#define USED_REMOTE						1
+
+#if USED_REMOTE == 0
+#define IR_0_BUTTON_VALUE				4278190594
+#define IR_1_BUTTON_VALUE				4261478914
+#define IR_2_BUTTON_VALUE				4244767234
+#define IR_3_BUTTON_VALUE				4228055554
+#define IR_4_BUTTON_VALUE				4211343874
+#define IR_5_BUTTON_VALUE				4194632194
+#define IR_6_BUTTON_VALUE				4177920514
+#define IR_7_BUTTON_VALUE				4161208834
+#define IR_8_BUTTON_VALUE				4144497154
+#define IR_9_BUTTON_VALUE				4127785474
+#define IR_BACK_BUTTON_VALUE			3793551874
+#define IR_ENTER_BUTTON_VALUE
+
+#elif USED_REMOTE == 1
+#define IR_0_BUTTON_VALUE				3994093319
+#define IR_1_BUTTON_VALUE				4211345159
+#define IR_2_BUTTON_VALUE				4194633479
+#define IR_3_BUTTON_VALUE				4177921799
+#define IR_4_BUTTON_VALUE				4144498439
+#define IR_5_BUTTON_VALUE				4127786759
+#define IR_6_BUTTON_VALUE				4111075079
+#define IR_7_BUTTON_VALUE				4077651719
+#define IR_8_BUTTON_VALUE				4060940039
+#define IR_9_BUTTON_VALUE				4044228359
+#define IR_PLUS_BUTTON_VALUE			4161210119
+#define IR_MINUS_BUTTON_VALUE			4094363399
+#define IR_MUL_BUTTON_VALUE				3977381639
+#define IR_DIV_BUTTON_VALUE				4010804999
+#define IR_X_BUTTON_VALUE				4027516679
+#define IR_Y_BUTTON_VALUE				2490042119
+#define IR_BACK_BUTTON_VALUE			3960669959
+#define IR_ENTER_BUTTON_VALUE			2540177159
+
+//static const OSC_IR_Button OSC_IrButtonArr[] = {
+//	{3994093319, "0"},
+//	{4211345159, "1"},
+//	{4194633479, "2abc"},
+//	{4177921799, "3def"},
+//	{4144498439, "4ghi"},
+//	{4127786759, "5jkl"},
+//	{4111075079, "6mno"},
+//	{4077651719, "7pqrs"},
+//	{4060940039, "8tuv"},
+//	{4044228359, "9wxyz"},
+//	{3960669959, "\b"},		// backspace
+//	{2540177159, "\n"},		// enter
+//	{4, "+"},
+//	{5, "-"},
+//	{4, "*"},
+//	{5, "/"},
+//
+//	/*	terminator	*/
+//	{0, ""},
+//};
+
+#endif
 
 #endif /* OSCILLOSCOPE_CONFIG_H_ */
 

@@ -19,6 +19,6 @@ void OSC_voidMenuButtonCallback(void);
 
 void OSC_voidAutoEnterMenuButtonCallback(void);
 
-
+void OSC_voidIrReceiveCompleteCallback(void);
 
 #endif /* INCLUDE_APP_OSCILLOSCOPE_ISRS_H_ */

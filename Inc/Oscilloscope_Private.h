@@ -87,7 +87,8 @@ typedef enum{
 	)
 
 typedef enum{
-	OSC_RunningMode_Normal
+	OSC_RunningMode_Normal,
+	OSC_RunningMode_Math
 }OSC_RunningMode_t;
 
 #define OFFSET_POINTER_LEN	7

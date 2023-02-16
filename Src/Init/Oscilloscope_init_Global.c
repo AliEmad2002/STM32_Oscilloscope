@@ -12,6 +12,8 @@
 #include "Img_interface.h"
 #include "Colors.h"
 #include "Delay_interface.h"
+#include "LinkedList.h"
+#include "MathParser.h"
 
 /*	MCAL	*/
 #include "RCC_interface.h"
@@ -27,6 +29,7 @@
 
 /*	HAL	*/
 #include "TFT_interface_V2.h"
+#include "IR_interface.h"
 
 /*	SELF	*/
 #include "Oscilloscope_config.h"
@@ -70,6 +73,8 @@ void OSC_voidInitGlobal(void)
 	Global_NotInUseImgBufferIndex = 0;
 
 	Global_CurrentRunningMode = OSC_RunningMode_Normal;
+
+	Global_IsIrNotRead = false;
 
 	Cursor_v1 = (OSC_Cursor_t){0, false};
 	Cursor_v2 = (OSC_Cursor_t){0, false};

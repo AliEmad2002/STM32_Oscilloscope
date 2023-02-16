@@ -13,6 +13,8 @@
 #include "Colors.h"
 #include "Delay_interface.h"
 #include "math.h"
+#include "LinkedList.h"
+#include "MathParser.h"
 
 /*	MCAL	*/
 #include "RCC_interface.h"
@@ -29,6 +31,7 @@
 /*	HAL	*/
 #include "TFT_interface_V2.h"
 #include "Rotary_Encoder_Interface.h"
+#include "IR_interface.h"
 
 /*	SELF	*/
 #include "Oscilloscope_config.h"
@@ -38,6 +41,8 @@
 #include "Oscilloscope_init_HAL.h"
 
 extern void OSC_voidSetDisplayBoundariesForSignalArea(void);
+
+extern void OSC_voidIrReceiveCompleteCallback(void);
 
 void OSC_voidInitTFT(void)
 {
@@ -97,6 +102,20 @@ void OSC_voidDisplayStartupScreeen(void)
 	//TFT2_voidClearDisplay(&Global_LCD);
 }
 
+void OSC_voidIrExtiCallback(void)
+{
+	IR_voidEXTICallbackTamplate((IR_Receiver_t*)&Global_IrReceiver);
+}
+
+void OSC_voidInitIR(void)
+{
+	IR_voidInit(
+		(IR_Receiver_t*)&Global_IrReceiver,
+		IR_EXTI_PIN % 16, IR_EXTI_PIN / 16,
+		OSC_voidIrReceiveCompleteCallback,
+		OSC_voidIrExtiCallback);
+}
+
 void OSC_voidInitHAL(void)
 {
 	OSC_voidInitTFT();
@@ -104,6 +123,8 @@ void OSC_voidInitHAL(void)
 	OSC_voidDisplayStartupScreeen();
 
 	OSC_voidSetDisplayBoundariesForSignalArea();
+
+	OSC_voidInitIR();
 
 	Rotary_Encoder_voidInit();
 }

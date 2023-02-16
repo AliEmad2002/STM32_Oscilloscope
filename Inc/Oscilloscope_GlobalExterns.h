@@ -41,6 +41,12 @@ extern volatile b8 Global_Ch1LastReadWasInRange;
 extern volatile b8 Global_Ch2LastReadWasInRange;
 extern volatile OSC_RunningMode_t Global_CurrentRunningMode;
 extern volatile u8 Global_NotInUseImgBufferIndex;
+extern volatile IR_Receiver_t Global_IrReceiver;
+extern volatile b8 Global_IsIrNotRead;
+extern volatile u32 Global_IrData;
+
+extern volatile MathParser_t Global_xMathParser;
+extern volatile MathParser_t Global_yMathParser;
 
 extern volatile OSC_Cursor_t Cursor_v1;
 extern volatile OSC_Cursor_t Cursor_v2;

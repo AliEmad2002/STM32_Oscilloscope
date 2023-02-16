@@ -16,6 +16,8 @@
 #include "Delay_interface.h"
 #include "diag/trace.h"
 #include "Check_List_interface.h"
+#include "LinkedList.h"
+#include "MathParser.h"
 
 /*	MCAL	*/
 #include "RCC_interface.h"
@@ -32,6 +34,7 @@
 /*	HAL	*/
 #include "TFT_interface_V2.h"
 #include "Rotary_Encoder_Interface.h"
+#include "IR_interface.h"
 
 /*	SELF	*/
 #include "Oscilloscope_Private.h"
@@ -40,12 +43,15 @@
 #include "Oscilloscope_GlobalExterns.h"
 #include "Oscilloscope_Info.h"
 #include "Oscilloscope_Info_init.h"
+#include "Oscilloscope_Math.h"
 #include "Oscilloscope_Menu_Private.h"
 #include "Oscilloscope_Menu_Init.h"
 
 extern volatile Menu_t Global_MainMenu;
 extern volatile OSC_Info_t Global_InfoArr[NUMBER_OF_INFO];
 
+extern void OSC_voidSelectNormalMode(void);
+extern void OSC_voidSelectMathMode(void);
 
 Menu_t* OSC_PtrInitChangeVoltageDivMenu(void)
 {
@@ -277,12 +283,64 @@ Check_List_t* OSC_PtrInitInfoEnableDisableCkeckList(char* returnStr)
 	return &checkList;
 }
 
+Menu_t* OSC_PtrInitMathExpressionMenu(void)
+{
+	/**	define elementArr	**/
+	static Menu_Element_t elementArr[2];
+
+	/**	define elements	**/
+	static const char str0[] = " Edit X-axis expression";
+	elementArr[0].str = (char*)str0;
+	elementArr[0].type = Menu_ElementType_Callback;
+	elementArr[0].childPtr = OSC_voidEditXAxisMathExpression;
+
+	static const char str1[] = " Edit Y-axis expression";
+	elementArr[1].str = (char*)str1;
+	elementArr[1].type = Menu_ElementType_Callback;
+	elementArr[1].childPtr = OSC_voidEditYAxisMathExpression;
+
+	/**	define menu	**/
+	static Menu_t menu = {
+		.currentSelected = 0,
+		.numberOfElements = 2,
+		.elementArr = elementArr
+	};
+
+	return &menu;
+}
+
+Menu_t* OSC_PtrInitChangeModeMenu(void)
+{
+	/**	define elementArr	**/
+	static Menu_Element_t elementArr[2];
+
+	/**	define elements	**/
+	static const char str0[] = " Normal mode";
+	elementArr[0].str = (char*)str0;
+	elementArr[0].type = Menu_ElementType_Callback;
+	elementArr[0].childPtr = OSC_voidSelectNormalMode;
+
+	static const char str1[] = " Math mode";
+	elementArr[1].str = (char*)str1;
+	elementArr[1].type = Menu_ElementType_Callback;
+	elementArr[1].childPtr = OSC_voidSelectMathMode;
+
+	/**	define menu	**/
+	static Menu_t menu = {
+		.currentSelected = 0,
+		.numberOfElements = 2,
+		.elementArr = elementArr
+	};
+
+	return &menu;
+}
+
 void OSC_voidInitMainMenu(void)
 {
 	static const char returnStr[] = "Return";
 
 	/**	define elementArr	**/
-	static Menu_Element_t elementArr[6];
+	static Menu_Element_t elementArr[8];
 
 	/**	define elements	**/
 	static const char str0[] = " Change division";
@@ -312,14 +370,24 @@ void OSC_voidInitMainMenu(void)
 	elementArr[4].childPtr =
 		OSC_PtrInitInfoEnableDisableCkeckList((char*)returnStr);
 
-	static const char str5[] = " Change brightness";
+	static const char str5[] = " Select running mode";
 	elementArr[5].str = (char*)str5;
-	elementArr[5].type = Menu_ElementType_Callback;
-	elementArr[5].childPtr = OSC_voidSelectChangeBrightness;
+	elementArr[5].type = Menu_ElementType_SubMenu;
+	elementArr[5].childPtr = OSC_PtrInitChangeModeMenu();
+
+	static const char str6[] = " Edit math expression";
+	elementArr[6].str = (char*)str6;
+	elementArr[6].type = Menu_ElementType_SubMenu;
+	elementArr[6].childPtr = OSC_PtrInitMathExpressionMenu();
+
+	static const char str7[] = " Change brightness";
+	elementArr[7].str = (char*)str7;
+	elementArr[7].type = Menu_ElementType_Callback;
+	elementArr[7].childPtr = OSC_voidSelectChangeBrightness;
 
 	/**	assign to main menu	**/
 	Global_MainMenu.currentSelected = 0;
-	Global_MainMenu.numberOfElements = 6;
+	Global_MainMenu.numberOfElements = 8;
 	Global_MainMenu.elementArr = elementArr;
 }
 

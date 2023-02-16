@@ -12,6 +12,8 @@
 #include "Img_interface.h"
 #include "Colors.h"
 #include "Delay_interface.h"
+#include "LinkedList.h"
+#include "MathParser.h"
 
 /*	MCAL	*/
 #include "RCC_interface.h"
@@ -27,6 +29,7 @@
 
 /*	HAL	*/
 #include "TFT_interface_V2.h"
+#include "IR_interface.h"
 
 /*	SELF	*/
 #include "Oscilloscope_config.h"
@@ -245,3 +248,40 @@ void OSC_voidAutoEnterMenuButtonCallback(void)
 	/*	debouncing timestamp	*/
 	lastPressTime = STK_u64GetElapsedTicks();
 }
+
+void OSC_voidIrReceiveCompleteCallback(void)
+{
+	Global_IsIrNotRead = true;
+
+	switch(Global_IrReceiver.data)
+	{
+	case IR_0_BUTTON_VALUE:		Global_IrData = 0; break;
+	case IR_1_BUTTON_VALUE:		Global_IrData = 1; break;
+	case IR_2_BUTTON_VALUE:		Global_IrData = 2; break;
+	case IR_3_BUTTON_VALUE:		Global_IrData = 3; break;
+	case IR_4_BUTTON_VALUE:		Global_IrData = 4; break;
+	case IR_5_BUTTON_VALUE:		Global_IrData = 5; break;
+	case IR_6_BUTTON_VALUE:		Global_IrData = 6; break;
+	case IR_7_BUTTON_VALUE:		Global_IrData = 7; break;
+	case IR_8_BUTTON_VALUE:		Global_IrData = 8; break;
+	case IR_9_BUTTON_VALUE:		Global_IrData = 9; break;
+	case IR_PLUS_BUTTON_VALUE:	Global_IrData = 10; break;
+	case IR_MINUS_BUTTON_VALUE:	Global_IrData = 11; break;
+	case IR_MUL_BUTTON_VALUE:	Global_IrData = 12; break;
+	case IR_DIV_BUTTON_VALUE:	Global_IrData = 13; break;
+	case IR_X_BUTTON_VALUE:		Global_IrData = 14; break;
+	case IR_Y_BUTTON_VALUE:		Global_IrData = 15; break;
+	case IR_BACK_BUTTON_VALUE:	Global_IrData = 16; break;
+	case IR_ENTER_BUTTON_VALUE:	Global_IrData = 17; break;
+	/*	otherwise, ignore this data	*/
+	default:
+		Global_IsIrNotRead = false;
+	}
+}
+
+
+
+
+
+
+

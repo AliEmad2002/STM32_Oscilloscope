@@ -1,8 +1,8 @@
 /*
- * main.c
+ * Oscilloscope_IR.c
  *
- *  Created on: Nov 25, 2022
- *      Author: Ali Emad Ali
+ *  Created on: Feb 16, 2023
+ *      Author: ali20
  */
 
 /*	LIB	*/
@@ -18,6 +18,8 @@
 #include "Txt_interface.h"
 #include <stdio.h>
 #include <stdlib.h>
+#include <string.h>
+#include "My_Math.h"
 #include "LinkedList.h"
 #include "MathParser.h"
 
@@ -32,40 +34,34 @@
 #include "GPIO_interface.h"
 #include "EXTI_interface.h"
 #include "ADC_interface.h"
-#include "MDAC_interface.h"
 
 /*	HAL	*/
 #include "TFT_interface_V2.h"
 #include "Rotary_Encoder_Interface.h"
 #include "IR_interface.h"
 
-/*	APP	*/
+/*	SELF	*/
+#include "Oscilloscope_config.h"
 #include "Oscilloscope_Private.h"
-#include "Oscilloscope_init_MCAL.h"
-#include "Oscilloscope_init_HAL.h"
-#include "Oscilloscope_init_Global.h"
-#include "Oscilloscope_init_APP.h"
-#include "Oscilloscope_interface.h"
+#include "Oscilloscope_Cursor.h"
+#include "Oscilloscope_GlobalExterns.h"
+#include "Oscilloscope_Conversions.h"
+#include "Oscilloscope_IR.h"
 
-int main(void)
-{
-	RCC_voidSysClockInit();
 
-	OSC_voidInitGlobal();
 
-	OSC_voidInitMCAL();
 
-	OSC_voidInitHAL();
 
-	OSC_voidInitAPP();
 
-	OSC_voidMainSuperLoop();
 
-	while(1)
-	{
 
-	}
 
-	return 0;
-}
+
+
+
+
+
+
+
+
 

@@ -8,6 +8,8 @@
 /*	LIB	*/
 #include "Std_Types.h"
 #include "Bit_Math.h"
+#include "LinkedList.h"
+#include "MathParser.h"
 
 /*	MCAL	*/
 #include "RCC_interface.h"
@@ -23,6 +25,7 @@
 
 /*	HAL	*/
 #include "TFT_interface_V2.h"
+#include "IR_interface.h"
 
 /*	SELF	*/
 #include "Oscilloscope_config.h"
@@ -101,3 +104,10 @@ volatile b8 Global_Ch2LastReadWasInRange;
 volatile OSC_RunningMode_t Global_CurrentRunningMode;
 
 volatile u8 Global_NotInUseImgBufferIndex;
+
+volatile IR_Receiver_t Global_IrReceiver;
+volatile b8 Global_IsIrNotRead;
+volatile u32 Global_IrData;
+
+volatile MathParser_t Global_xMathParser;
+volatile MathParser_t Global_yMathParser;

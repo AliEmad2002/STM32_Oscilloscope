@@ -17,6 +17,8 @@
 #include "diag/trace.h"
 #include "Check_List_interface.h"
 #include <stdio.h>
+#include "LinkedList.h"
+#include "MathParser.h"
 
 /*	MCAL	*/
 #include "RCC_interface.h"
@@ -33,12 +35,14 @@
 /*	HAL	*/
 #include "TFT_interface_V2.h"
 #include "Rotary_Encoder_Interface.h"
+#include "IR_interface.h"
 
 /*	SELF	*/
 #include "Oscilloscope_Cursor.h"
 #include "Oscilloscope_Private.h"
 #include "Oscilloscope_config.h"
 #include "Oscilloscope_GlobalExterns.h"
+#include "Oscilloscope_Draw.h"
 #include "Oscilloscope_Info.h"
 #include "Oscilloscope_Info_Init.h"
 #include "Oscilloscope_Menu_Private.h"
@@ -63,16 +67,7 @@ void OSC_voidOpenMainMenu(void)
 	OSC_voidOpenMenu((Menu_t*)&Global_MainMenu);
 
 	/**	fill the screen with background color	**/
-	/*	set boundaries (full screen)	*/
-	TFT2_SET_X_BOUNDARIES(&Global_LCD, 0, 127);
-	TFT2_SET_Y_BOUNDARIES(&Global_LCD, 0, 159);
-
-	/*	start data write operation	*/
-	TFT2_WRITE_CMD(&Global_LCD, TFT_CMD_MEM_WRITE);
-	TFT2_ENTER_DATA_MODE(&Global_LCD);
-
-	/*	draw background	*/
-	TFT2_voidFillDMA((TFT2_t*)&Global_LCD, &LCD_BACKGROUND_COLOR_U8, 128 * 160);
+	OSC_voidFillDisplayWithBGColor();
 
 	/*	set screen boundaries for full signal image area	*/
 	OSC_voidSetDisplayBoundariesForSignalArea();
@@ -146,16 +141,7 @@ void OSC_voidOpenMenu(Menu_t* menu)
 void OSC_voidUpdateMenuOnDisplay(Menu_t* menu)
 {
 	/**	fill the screen with background color	**/
-	/*	set boundaries (full screen)	*/
-	TFT2_SET_X_BOUNDARIES(&Global_LCD, 0, 127);
-	TFT2_SET_Y_BOUNDARIES(&Global_LCD, 0, 159);
-
-	/*	start data write operation	*/
-	TFT2_WRITE_CMD(&Global_LCD, TFT_CMD_MEM_WRITE);
-	TFT2_ENTER_DATA_MODE(&Global_LCD);
-
-	/*	draw background	*/
-	TFT2_voidFillDMA((TFT2_t*)&Global_LCD, &LCD_BACKGROUND_COLOR_U8, 128 * 160);
+	OSC_voidFillDisplayWithBGColor();
 
 	/**	draw menu lines	**/
 	/*

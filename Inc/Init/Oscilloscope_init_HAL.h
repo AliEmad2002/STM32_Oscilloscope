@@ -13,6 +13,10 @@ void OSC_voidInitTFT(void);
 
 void OSC_voidDisplayStartupScreeen(void);
 
+void OSC_voidIrExtiCallback(void);
+
+void OSC_voidInitIR(void);
+
 void OSC_voidInitHAL(void);
 
 

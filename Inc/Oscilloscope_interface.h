@@ -8,98 +8,11 @@
 #ifndef OSCILLOSCOPE_INTERFACE_H_
 #define OSCILLOSCOPE_INTERFACE_H_
 
-
-/*******************************************************************************
- * Init functions:
- ******************************************************************************/
-extern void OSC_voidInitGlobal(void);
-
-/*
- * Inits all (MCAL) hardware resources configured in "Oscilloscope_configh.h"
- * file.
- */
-extern void OSC_voidInitMCAL(void);
-
-/*
- * Inits all (HAL) hardware resources configured in "Oscilloscope_configh.h"
- * file, and static objects defined in "Oscilloscope_program.c".
- */
-extern void OSC_voidInitHAL(void);
-
-extern void OSC_voidInitAPP(void);
-
-/*******************************************************************************
- * Mode switching:
- ******************************************************************************/
-/*	Enters math mode (beta)	*/
-void OSC_voidEnterMathMode(void);
-
-/*	Enters normal Y-t mode	*/
-void OSC_voidEnterNormalMode(void);
-
-/*	pause / resume (state is actually triggered each call)	*/
-void OSC_voidPause(void);
-
-void OSC_voidResume(void);
-
-void OSC_voidTrigPauseResume(void);
-
-/*******************************************************************************
- * Main thrad functions:
- ******************************************************************************/
 /*	main super loop (no OS version)	*/
 void OSC_voidMainSuperLoop(void);
 
-void OSC_voidGetInfoStr(char* str);
+void OSC_voidSelectNormalMode(void);
 
-void OSC_voidDrawInfo(void);
-
-/*
- * auto calibrates volts per div and time per div to properly
- * display the signal
- */
-void OSC_voidAutoCalibrate(void);
-
-/*******************************************************************************
- * ISR callbacks:
- ******************************************************************************/
-/*
- * this function is called whenever DMA finishes a transfer to TFT, it starts
- * the next "OSC_LineDrawingState_t" operation, and clears DMA completion flags.
- *
- */
-void OSC_voidDMATransferCompleteCallback(void);
-
-/*
- * this function is called to start executing what's mentioned in
- * "OSC_LineDrawingState_1" description.
- *
- * It is executed periodically as what user had configured time axis.
- *
- * minimum call rate of this function is important, as executing it in a high
- * rate would overlap drawing of multiple lines!
- * minimum call rate when F_SYS = 72MHz and using default TFT settings is about
- * 90~100 us.
- */
-void OSC_voidTimToStartDrawingNextLineCallback(void);
-
-/*
- * This function is periodically called/triggered by a configured timer unit.
- * It draws signal info on the screen.
- * This function:
- *  - Prepares info image.
- * 	- Pulls TFT semaphore till released.
- * 	- Takes it.
- *	- Pauses DMA transfer complete interrupt.
- *	- Sets info image boundaries on TFT.
- *	- Sends info image by DMA.
- *	- Waits for transfer complete.	  --|    all three are implemented in:
- *	- Clears DMA transfer complete flag.|==>"TFT2_voidWaitCurrentDataTransfer()"
- *	- Disables DMA.                   --|
- *	- Enables/resumes DMA transfer complete interrupt.
- *	- Releases TFT semaphore.
- *
- */
-void OSC_voidTimToStartDrawingInfoCallback(void);
+void OSC_voidSelectMathMode(void);
 
 #endif /* OSCILLOSCOPE_INTERFACE_H_ */

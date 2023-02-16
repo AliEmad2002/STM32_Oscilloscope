@@ -13,6 +13,8 @@
 #include "Colors.h"
 #include "Txt_interface.h"
 #include <stdio.h>
+#include "LinkedList.h"
+#include "MathParser.h"
 
 /*	MCAL	*/
 #include "RCC_interface.h"
@@ -23,6 +25,7 @@
 
 /*	HAL	*/
 #include "TFT_interface_V2.h"
+#include "IR_interface.h"
 
 /*	SELF	*/
 #include "Oscilloscope_Private.h"
