@@ -14,10 +14,6 @@
 #define ADC_1_CHANNEL		(ANALOG_INPUT_1_PIN % 16)
 #define ADC_2_CHANNEL		(ANALOG_INPUT_2_PIN % 16)
 
-/*	pixels per div	*/
-#define PIXELS_PER_VOLTAGE_DIV								16
-#define PIXELS_PER_TIME_DIV									15
-
 /*
  * DMA1 channel used in mem to mem operations
  * (for drawing a single line segment of the display)
@@ -100,6 +96,14 @@ typedef enum{
 #define SIGNAL_LINE_LENGTH (SIGNAL_IMG_X_MAX - SIGNAL_IMG_X_MIN + 1)
 
 #define IMG_BUFFER_SIZE	(SIGNAL_LINE_LENGTH * LINES_PER_IMAGE_BUFFER)
+
+/*	pixels per div	*/
+#define PIXELS_PER_VOLTAGE_DIV							11
+/*	to get 1-time Div. per image buffer	*/
+#define PIXELS_PER_TIME_DIV								LINES_PER_IMAGE_BUFFER
+
+#define VOLTAGE_DIVS_PER_LINE		\
+	((SIGNAL_LINE_LENGTH - 2) / PIXELS_PER_VOLTAGE_DIV)
 
 #define RISING_EDGE_WAIT_TIMEOUT_MS			100
 

@@ -83,13 +83,17 @@ void OSC_voidMainSuperLoop(void)
 			OSC_voidOpenMainMenu();
 		}
 
-		/*	if info drawing time has passed, draw info	*/
-		if (STK_u64GetElapsedTicks() - lastInfoDrawTime > infoDrawPeriod)
+		/*	only if in normal mode	*/
+		if (Global_CurrentRunningMode == OSC_RunningMode_Normal)
 		{
-			/*	draw info on screen	*/
-			OSC_voidDrawInfo();
-			/*	update timestamp	*/
-			lastInfoDrawTime = STK_u64GetElapsedTicks();
+			/*	if info drawing time has passed, draw info	*/
+			if (STK_u64GetElapsedTicks() - lastInfoDrawTime > infoDrawPeriod)
+			{
+				/*	draw info on screen	*/
+				OSC_voidDrawInfo();
+				/*	update timestamp	*/
+				lastInfoDrawTime = STK_u64GetElapsedTicks();
+			}
 		}
 
 		/*	only if device is not paused, take new samples	*/

@@ -49,7 +49,7 @@
 
 int main(void)
 {
-	RCC_voidSysClockInit();
+ 	RCC_voidSysClockInit();
 
 	OSC_voidInitGlobal();
 

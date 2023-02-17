@@ -120,7 +120,7 @@ void OSC_voidInitHAL(void)
 {
 	OSC_voidInitTFT();
 
-	OSC_voidDisplayStartupScreeen();
+	//OSC_voidDisplayStartupScreeen();
 
 	OSC_voidSetDisplayBoundariesForSignalArea();
 

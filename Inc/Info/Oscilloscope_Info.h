@@ -8,7 +8,7 @@
 #ifndef APP_INFO_OSCILLOSCOPE_INFO_H_
 #define APP_INFO_OSCILLOSCOPE_INFO_H_
 
-#define NUMBER_OF_INFO	15
+#define NUMBER_OF_INFO	17
 
 typedef struct{
 	s64 (*getValInNanoCallback)(void);

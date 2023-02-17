@@ -261,13 +261,25 @@ s64 OSC_s64GetVmax2Info(void)
 /*	vAvg1	*/
 s64 OSC_s64GetVavg1Info(void)
 {
-	return (OSC_s64GetVmax1Info() - OSC_s64GetVmin1Info()) / 2;
+	s64 avgPix = (s32)Global_Ch1SumOfCurrentFrame / NUMBER_OF_SAMPLES;
+	avgPix -= SIGNAL_LINE_LENGTH / 2;
+
+	s64 avgMicroVolts = avgPix * Global_CurrentCh1MicroVoltsPerPix;
+	avgMicroVolts -= Global_Offset1MicroVolts;
+
+	return avgMicroVolts * 1e3;
 }
 
 /*	vAvg2	*/
 s64 OSC_s64GetVavg2Info(void)
 {
-	return (OSC_s64GetVmax2Info() - OSC_s64GetVmin2Info()) / 2;
+	s64 avgPix = (s32)Global_Ch2SumOfCurrentFrame / NUMBER_OF_SAMPLES;
+	avgPix -= SIGNAL_LINE_LENGTH / 2;
+
+	s64 avgMicroVolts = avgPix * Global_CurrentCh2MicroVoltsPerPix;
+	avgMicroVolts -= Global_Offset2MicroVolts;
+
+	return avgMicroVolts * 1e3;
 }
 
 /*	vDiv1	*/

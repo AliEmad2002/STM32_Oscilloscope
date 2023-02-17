@@ -268,7 +268,24 @@ void OSC_voidUpdateCheckListOnDisplay(Check_List_t* checkListPtr)
 	TFT2_voidFillDMA((TFT2_t*)&Global_LCD, &LCD_BACKGROUND_COLOR_U8, 128 * 160);
 
 	/**	draw check-list lines	**/
-	for (u8 i = 0; i < checkListPtr->numberOfElements; i++)
+	u8 iStart;
+	u8 iMax;
+	if(checkListPtr->numberOfElements > 15)
+	{
+		iStart = checkListPtr->currentSelectedElement;
+		iMax = iStart + 15;
+
+		if (iMax > checkListPtr->numberOfElements)
+			iMax = checkListPtr->numberOfElements;
+	}
+
+	else
+	{
+		iStart = 0;
+		iMax = checkListPtr->numberOfElements;
+	}
+
+	for (u8 i = iStart; i < iMax; i++)
 	{
 		/*	if 'i'th element is hidden, continue	*/
 		if (CHECK_LIST_IS_ELEMENT_HIDDEN(checkListPtr, i))
@@ -315,7 +332,7 @@ void OSC_voidUpdateCheckListOnDisplay(Check_List_t* checkListPtr)
 			8, 160);
 
 		/*	set boundaries 	*/
-		TFT2_SET_X_BOUNDARIES(&Global_LCD, 128 - 8 * (i + 1), 127 - 8 * i);
+		TFT2_SET_X_BOUNDARIES(&Global_LCD, 128 - 8 * ((i - iStart) + 1), 127 - 8 * (i - iStart));
 		TFT2_SET_Y_BOUNDARIES(&Global_LCD, 0, 159);
 
 		/*	start data write operation	*/

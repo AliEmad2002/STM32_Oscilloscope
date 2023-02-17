@@ -31,24 +31,26 @@
 
 #define LCD_MAIN_DRAWING_COLOR_U16					(colorWhite.code565)
 
-#define LCD_SECONDARY_DRAWING_COLOR_U16				(colorBlue.code565)
+#define LCD_SECONDARY_DRAWING_COLOR_U16				(colorGreen.code565)
 
-#define LCD_CURSOR1_DRAWING_COLOR_U16				(colorRed.code565)
+#define LCD_CURSOR1_DRAWING_COLOR_U16				(colorYellow.code565)
 
-#define LCD_CURSOR2_DRAWING_COLOR_U16				(colorYellow.code565)
+#define LCD_CURSOR2_DRAWING_COLOR_U16				(colorViolet.code565)
 
-#define LCD_AXIS_DRAWING_COLOR_U16					(colorYellow.code565)
+#define LCD_AXIS_DRAWING_COLOR_U16					(colorRed.code565)
+
+#define LCD_DIV_DRAWING_COLOR_U16					(colorBlue.code565)
 
 #define LCD_OFFSET_POINTER1_DRAWING_COLOR_U16		LCD_MAIN_DRAWING_COLOR_U16
 
 #define LCD_OFFSET_POINTER2_DRAWING_COLOR_U16		\
 	LCD_SECONDARY_DRAWING_COLOR_U16
 
+#define LCD_FPS										20
 
-
-//#define LCD_MENU_FONT_SIZE							1
-
-#define LCD_FPS										10
+/*	check list element prefix	*/
+#define CHECKED_SYMBOL_ASCII_CODE		253
+#define UNCHECKED_SYMBOL_ASCII_CODE		' '
 
 /*******************************************************************************
  * Running indication LED
@@ -73,69 +75,7 @@
 #define BUTTON_DEBOUNCING_TIME_MS					250ul
 #define ROTARY_DEBOUNCING_TIME_MS					25ul
 
-#define IR_EXTI_PIN										GPIO_Pin_B4
-
-/*******************************************************************************
- * Safe thread:
- * Some routines are very critical and won't work right if they were interrupted
- * while running in main thread. To solve this, put that routine in an EXTI
- * callback and trigger it by SW in main thread.
- ******************************************************************************/
-#define SAFE_THREAD_EXTI_LINE						1
-
-/*******************************************************************************
- * Analog channels and ADC configuration
- * Note: 'ADC channel' and 'Oscilloscope channel' are clearly stated down-here.
- * so do not confuse what 'channel' is! it will be the word before it.
- ******************************************************************************/
-/*	ADC sample time (an element of the enum 'ADC_SampleTime_t')	*/
-#define ADC_SAMPLE_TIME								ADC_SampleTime_1_5
-
-/*	(milli-Sample per second)	*/
-#define INITIAL_SAMPLING_FREQUENCY					1000000
-
-#define INPUT_CH1_ADC_CHANNEL						ADC_ChannelNumber_3
-
-#define INPUT_CH2_ADC_CHANNEL						ADC_ChannelNumber_5
-
-/*******************************************************************************
- * Div. configurations:
- ******************************************************************************/
-/*	These two arrays must be sorted ascendingly	*/
-#define NUMBER_OF_VOLT_DIVS							8
-static const u32 OSC_mVoltsPerDivArr[NUMBER_OF_VOLT_DIVS] = {
-	1, 5, 20, 100, 500, 1000, 2000, 5000
-};
-
-#define NUMBER_OF_TIME_DIVS							50
-static const u64 OSC_nSecondsPerDivArr[NUMBER_OF_TIME_DIVS] = {
-	1e3, 2e3, 3e3, 4e3, 5e3, 6e3, 7e3, 8e3, 9e3,
-	1e4, 2e4, 3e4, 4e4, 5e4, 6e4, 7e4, 8e4, 9e4,
-	1e5, 2e5, 3e5, 4e5, 5e5, 6e5, 7e5, 8e5, 9e5,
-	1e6, 2e6, 3e6, 4e6, 5e6, 6e6, 7e6, 8e6, 9e6,
-	1e7, 2e7, 3e7, 4e7, 5e7, 6e7, 7e7, 8e7, 9e7,
-	1e8, 2e8, 3e8, 4e8, 5e8
-};
-
-/*******************************************************************************
- * frequency measurement
- ******************************************************************************/
-#define FREQ_MEASURE_CH1_TIMER_UNIT_NUMBER				2
-#define FREQ_MEASURE_CH1_TIMER_UNIT_AFIO_MAP			0
-#define FREQ_MEASURE_CH1_MIN_FREQ_MILLI_HZ				(1 * 1 * 1000)
-
-#define FREQ_MEASURE_CH2_TIMER_UNIT_NUMBER				1
-#define FREQ_MEASURE_CH2_TIMER_UNIT_AFIO_MAP			0
-#define FREQ_MEASURE_CH2_MIN_FREQ_MILLI_HZ				(1 * 1 * 1000)
-
-/*
- * Used in frequency measurement in auto calibrate function. This is the timeout
- * of waiting for signal rising edge to get non-old/parasitic frequency measure.
- */
-#define FREQ_MEASURE_TIMEOUT_MS						1000
-
-#define CHECKED_SYMBOL_ASCII_CODE		253
-#define UNCHECKED_SYMBOL_ASCII_CODE		' '
+#define IR_EXTI_PIN									GPIO_Pin_B4
 
 #define IR_MAX_SMALL_TIME_MS					500
 #define IR_MIN_TIME_BETWEEN_PRESSES_MS			250
@@ -154,7 +94,6 @@ static const u64 OSC_nSecondsPerDivArr[NUMBER_OF_TIME_DIVS] = {
 #define IR_8_BUTTON_VALUE				4144497154
 #define IR_9_BUTTON_VALUE				4127785474
 #define IR_BACK_BUTTON_VALUE			3793551874
-#define IR_ENTER_BUTTON_VALUE
 
 #elif USED_REMOTE == 1
 #define IR_0_BUTTON_VALUE				3994093319
@@ -176,29 +115,69 @@ static const u64 OSC_nSecondsPerDivArr[NUMBER_OF_TIME_DIVS] = {
 #define IR_BACK_BUTTON_VALUE			3960669959
 #define IR_ENTER_BUTTON_VALUE			2540177159
 
-//static const OSC_IR_Button OSC_IrButtonArr[] = {
-//	{3994093319, "0"},
-//	{4211345159, "1"},
-//	{4194633479, "2abc"},
-//	{4177921799, "3def"},
-//	{4144498439, "4ghi"},
-//	{4127786759, "5jkl"},
-//	{4111075079, "6mno"},
-//	{4077651719, "7pqrs"},
-//	{4060940039, "8tuv"},
-//	{4044228359, "9wxyz"},
-//	{3960669959, "\b"},		// backspace
-//	{2540177159, "\n"},		// enter
-//	{4, "+"},
-//	{5, "-"},
-//	{4, "*"},
-//	{5, "/"},
-//
-//	/*	terminator	*/
-//	{0, ""},
-//};
-
 #endif
+
+/*******************************************************************************
+ * Safe thread:
+ * Some routines are very critical and won't work right if they were interrupted
+ * while running in main thread. To solve this, put that routine in an EXTI
+ * callback and trigger it by SW in main thread.
+ ******************************************************************************/
+#define SAFE_THREAD_EXTI_LINE						1
+
+/*******************************************************************************
+ * Analog channels and ADC configuration
+ * Note: 'ADC channel' and 'Oscilloscope channel' are clearly stated down-here.
+ * so do not confuse what 'channel' is! it will be the word before it.
+ ******************************************************************************/
+/*	ADC sample time (an element of the enum 'ADC_SampleTime_t')	*/
+#define ADC_SAMPLE_TIME								ADC_SampleTime_1_5
+
+/*	(milli-Hz)	*/
+#define INITIAL_SAMPLING_FREQUENCY					1000000
+
+#define INPUT_CH1_ADC_CHANNEL						ADC_ChannelNumber_3
+
+#define INPUT_CH2_ADC_CHANNEL						ADC_ChannelNumber_5
+
+/*******************************************************************************
+ * Div. configurations:
+ ******************************************************************************/
+/*	These two arrays must be written here in an ascending order	*/
+#define NUMBER_OF_VOLT_DIVS							19
+static const u32 OSC_mVoltsPerDivArr[NUMBER_OF_VOLT_DIVS] = {
+	1, 5, 20, 100, 500,
+	600, 700, 800, 900,
+	1000, 1200, 1400, 1600, 1800,
+	2000, 2400, 2800, 3200, 3600
+};
+
+#define NUMBER_OF_TIME_DIVS							50
+static const u64 OSC_nSecondsPerDivArr[NUMBER_OF_TIME_DIVS] = {
+	1e3, 2e3, 3e3, 4e3, 5e3, 6e3, 7e3, 8e3, 9e3,
+	1e4, 2e4, 3e4, 4e4, 5e4, 6e4, 7e4, 8e4, 9e4,
+	1e5, 2e5, 3e5, 4e5, 5e5, 6e5, 7e5, 8e5, 9e5,
+	1e6, 2e6, 3e6, 4e6, 5e6, 6e6, 7e6, 8e6, 9e6,
+	1e7, 2e7, 3e7, 4e7, 5e7, 6e7, 7e7, 8e7, 9e7,
+	1e8, 2e8, 3e8, 4e8, 5e8
+};
+
+/*******************************************************************************
+ * frequency measurement
+ ******************************************************************************/
+#define FREQ_MEASURE_CH1_TIMER_UNIT_NUMBER				2
+#define FREQ_MEASURE_CH1_TIMER_UNIT_AFIO_MAP			0
+#define FREQ_MEASURE_CH1_MIN_FREQ_MILLI_HZ				(1 * 100 * 1000)
+
+#define FREQ_MEASURE_CH2_TIMER_UNIT_NUMBER				1
+#define FREQ_MEASURE_CH2_TIMER_UNIT_AFIO_MAP			0
+#define FREQ_MEASURE_CH2_MIN_FREQ_MILLI_HZ				(1 * 40 * 1000)
+
+/*
+ * Used in frequency measurement in auto calibrate function. This is the timeout
+ * of waiting for signal rising edge to get non-old/parasitic frequency measure.
+ */
+#define FREQ_MEASURE_TIMEOUT_MS						1000
 
 #endif /* OSCILLOSCOPE_CONFIG_H_ */
 

@@ -58,10 +58,12 @@ volatile u16* Global_ImgBufferArr[2] = {
 volatile u8 Global_Ch1PeakToPeakValueInCurrentFrame;
 volatile u8 Global_Ch1MinValueInCurrentFrame;
 volatile u8 Global_Ch1MaxValueInCurrentFrame;
+volatile u32 Global_Ch1SumOfCurrentFrame;
 
 volatile u8 Global_Ch2PeakToPeakValueInCurrentFrame;
 volatile u8 Global_Ch2MinValueInCurrentFrame;
 volatile u8 Global_Ch2MaxValueInCurrentFrame;
+volatile u32 Global_Ch2SumOfCurrentFrame;
 
 /*	current resolution values	*/
 volatile u32 Global_CurrentCh1MicroVoltsPerPix;

@@ -56,40 +56,65 @@
 #include "Oscilloscope_Math.h"
 
 
+/**
+ * TODO:
+ * Math mode is not done yet.
+ **/
 void OSC_voidDrawXYModeFrame(void)
 {
-	/*	clear display (fill with BG color)	*/
-	OSC_voidFillDisplayWithBGColor();
-
-	volatile d64 xPrev = 0.0;
-	volatile d64 yPrev = 0.0;
-
-	for (u8 i = 0; i < NUMBER_OF_SAMPLES; i++)
-	{
-		d64 ch1Current = GET_CH1_V_IN_PIXELS(Global_SampleBuffer[2 * i]);
-		d64 ch2Current = GET_CH1_V_IN_PIXELS(Global_SampleBuffer[2 * i + 1]);
-
-		volatile d64 x =
-			MathParser_d64Evaluate(
-				(MathParser_t*)&Global_xMathParser,
-				ch1Current, ch2Current, 0.0);
-
-		volatile d64 y =
-			MathParser_d64Evaluate(
-				(MathParser_t*)&Global_yMathParser,
-				ch1Current, ch2Current, 0.0);
-
-		/*	limit current readings to displayable range (chop readings)	*/
-		CHOP_X_VALUE(x);
-		CHOP_Y_VALUE(y);
-
-		/*	connect {x, y}, {xPrev, yPrev} by a line.	*/
-
-
-		/*	update prev's	*/
-		xPrev = x;
-		yPrev = y;
-	}
+//	static u8 xPixPrev = 0;
+//	static u8 yPixPrev = 0;
+//
+//	/*	clear display (fill with BG color)	*/
+//	OSC_voidFillDisplayWithBGColor();
+//
+//	for (u8 i = 0; i < NUMBER_OF_SAMPLES; i++)
+//	{
+//		/*	get readings in volts	*/
+//		volatile f32 ch1Volts =
+//			((f32)GET_CH1_V_IN_MICRO_VOLTS(Global_SampleBuffer[2 * i])) /
+//			1000000.0f;
+//
+//		volatile f32 ch2Volts =
+//			((f32)GET_CH2_V_IN_MICRO_VOLTS(Global_SampleBuffer[2 * i + 1])) /
+//			1000000.0f;
+//
+//		/*	parse	*/
+//		/*	x-axis parsed value multiplied by 1e6	*/
+//		volatile s32 xParsed =
+//			1000000.0f * (f32)MathParser_d64Evaluate(
+//				(MathParser_t*)&Global_xMathParser,
+//				ch1Volts, ch2Volts, 0.0);
+//
+//		/*	y-axis parsed value multiplied by 1e6	*/
+//		volatile s32 yParsed =
+//			1000000.0f * (f32)MathParser_d64Evaluate(
+//				(MathParser_t*)&Global_yMathParser,
+//				ch1Volts, ch2Volts, 0.0);
+//
+//		/*	convert to pixels	*/
+//		volatile s32 xPix = GET_X_PIX_MATH_MODE(xParsed);
+//
+//		volatile s32 yPix = GET_Y_PIX_MATH_MODE(yParsed);
+//
+//
+//		/*	limit current readings to displayable range (chop readings)	*/
+//		CHOP_X_VALUE(xPix);
+//		CHOP_Y_VALUE(yPix);
+//
+//		/*
+//		 * connect {x, y}, {xPrev, yPrev} by a line.
+//		 * (input axis are swapped in this function call, as the TFT is used
+//		 * rotated)
+//		 */
+//		TFT2_voidDrawLine(
+//			(TFT2_t*)&Global_LCD, yPix, xPix, yPixPrev, xPixPrev,
+//			LCD_MAIN_DRAWING_COLOR_U16);
+//
+//		/*	update prev's	*/
+//		xPixPrev = xPix;
+//		yPixPrev = yPix;
+//	}
 }
 
 void OSC_voidEditXAxisMathExpression(void)

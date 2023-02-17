@@ -148,10 +148,17 @@ void OSC_voidAutoCalibrate(void)
 		&max1, &min1, &max2, &min2);
 
 	/*	convert these values to micro volts	*/
-	s64 max1Uv = GET_V_IN_MICRO_VOLTS(min1);
-	s64 min1Uv = GET_V_IN_MICRO_VOLTS(max1);
-	s64 max2Uv = GET_V_IN_MICRO_VOLTS(min2);
-	s64 min2Uv = GET_V_IN_MICRO_VOLTS(max2);
+	s64 max1Uv = GET_CH1_V_IN_MICRO_VOLTS(max1);
+	s64 min1Uv = GET_CH1_V_IN_MICRO_VOLTS(min1);
+	s64 max2Uv = GET_CH2_V_IN_MICRO_VOLTS(max2);
+	s64 min2Uv = GET_CH2_V_IN_MICRO_VOLTS(min2);
+
+	/*
+	 * due to inverse calculation (like the result of ch1 conversion in normal
+	 * mode), min and max values may be swapped, which would lead to further
+	 * problems in the following subtraction (max - min). Therefore, "abs()"
+	 * will be used to avoid this problem.
+	 */
 
 	/*
 	 * volts per pixel = (v_max - v_min) / (SIGNAL_LINE_LENGTH * 70%)
@@ -160,11 +167,13 @@ void OSC_voidAutoCalibrate(void)
 	 *
 	 * (Min is 100mV per whole display, can be later changed)
 	 */
-	Global_CurrentCh1MicroVoltsPerPix = (max1Uv - min1Uv) / ((70 * SIGNAL_LINE_LENGTH) / 100);
+	Global_CurrentCh1MicroVoltsPerPix =
+			MATH_s64Abs(max1Uv - min1Uv) / ((70 * SIGNAL_LINE_LENGTH) / 100);
 	if (Global_CurrentCh1MicroVoltsPerPix <= 100000 / SIGNAL_LINE_LENGTH)
 		Global_CurrentCh1MicroVoltsPerPix = 100000 / SIGNAL_LINE_LENGTH;
 
-	Global_CurrentCh2MicroVoltsPerPix = (max2Uv - min2Uv) / ((70 * SIGNAL_LINE_LENGTH) / 100);
+	Global_CurrentCh2MicroVoltsPerPix =
+			MATH_s64Abs(max2Uv - min2Uv) / ((70 * SIGNAL_LINE_LENGTH) / 100);
 	if (Global_CurrentCh2MicroVoltsPerPix <= 100000 / SIGNAL_LINE_LENGTH)
 		Global_CurrentCh2MicroVoltsPerPix = 100000 / SIGNAL_LINE_LENGTH;
 
@@ -175,11 +184,30 @@ void OSC_voidAutoCalibrate(void)
 	/*	update global min, max and vpp	*/
 	Global_Ch1MaxValueInCurrentFrame = GET_CH1_V_IN_PIXELS(min1);
 	Global_Ch1MinValueInCurrentFrame = GET_CH1_V_IN_PIXELS(max1);
+
+	if (Global_Ch1MaxValueInCurrentFrame < Global_Ch1MinValueInCurrentFrame)
+	{
+		/*	swap	*/
+		u8 temp = Global_Ch1MinValueInCurrentFrame;
+		Global_Ch1MinValueInCurrentFrame = Global_Ch1MaxValueInCurrentFrame;
+		Global_Ch1MaxValueInCurrentFrame = temp;
+	}
+
 	Global_Ch1PeakToPeakValueInCurrentFrame =
 		Global_Ch1MaxValueInCurrentFrame - Global_Ch1MinValueInCurrentFrame;
 
+
 	Global_Ch2MaxValueInCurrentFrame = GET_CH2_V_IN_PIXELS(min2);
 	Global_Ch2MinValueInCurrentFrame = GET_CH2_V_IN_PIXELS(max2);
+
+	if (Global_Ch2MaxValueInCurrentFrame < Global_Ch2MinValueInCurrentFrame)
+	{
+		/*	swap	*/
+		u8 temp = Global_Ch2MinValueInCurrentFrame;
+		Global_Ch2MinValueInCurrentFrame = Global_Ch2MaxValueInCurrentFrame;
+		Global_Ch2MaxValueInCurrentFrame = temp;
+	}
+
 	Global_Ch2PeakToPeakValueInCurrentFrame =
 		Global_Ch2MaxValueInCurrentFrame - Global_Ch2MinValueInCurrentFrame;
 

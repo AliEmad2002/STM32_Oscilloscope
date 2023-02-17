@@ -24,23 +24,40 @@
 * 		 	(10 * pixels_per_volt * v_adc) / 4096 +
 * 		 	64							[pixels]
 */
-#define GET_CH1_V_IN_PIXELS(v_adc)                                            \
-(	                                                                   	      \
-	(5 * 1000000 + Global_Offset1MicroVolts) /                                \
-	(s32)Global_CurrentCh1MicroVoltsPerPix -						                  \
-	(10000000 * (s64)(v_adc)) / Global_CurrentCh1MicroVoltsPerPix / 4096 + SIGNAL_LINE_LENGTH / 2 	                                                      \
-)
-
-#define GET_CH2_V_IN_PIXELS(v_adc)                                            \
-(	                                                                   	      \
-	(5 * 1000000 + Global_Offset2MicroVolts) /                                \
-	(s32)Global_CurrentCh2MicroVoltsPerPix -						                  \
-	(10000000 * (s64)(v_adc)) / Global_CurrentCh2MicroVoltsPerPix / 4096 + SIGNAL_LINE_LENGTH / 2 	                                                      \
-)
-
-#define GET_V_IN_MICRO_VOLTS(v_adc)                 \
+#define GET_CH1_V_IN_MICRO_VOLTS(v_adc)             \
 (	                                                \
-	5 * 1000000 - (10000000 * (s64)(v_adc)) / 4096	\
+	5e6 - (10e6 * (s64)(v_adc)) / 4096				\
+)
+
+#define GET_CH1_V_IN_PIXELS(v_adc)                                          \
+(	                                                                   	    \
+	(5e6 + Global_Offset1MicroVolts) /										\
+	(s32)Global_CurrentCh1MicroVoltsPerPix -						        \
+	(10e6 * (s64)(v_adc)) / Global_CurrentCh1MicroVoltsPerPix / 4096 +  	\
+	SIGNAL_LINE_LENGTH / 2 	                                                \
+)
+
+#define GET_Y_PIX_MATH_MODE(yParsed)               \
+(                                                  \
+	((yParsed) + Global_Offset1MicroVolts) /       \
+	(s32)Global_CurrentCh1MicroVoltsPerPix + 64    \
+)
+
+#define GET_CH2_V_IN_MICRO_VOLTS(v_adc)             \
+(	                                                \
+	(33e5 * (s64)(v_adc)) / 4096					\
+)
+
+#define GET_CH2_V_IN_PIXELS(v_adc)                                   \
+(	                                                                 \
+	(Global_Offset2MicroVolts + GET_CH2_V_IN_MICRO_VOLTS((v_adc))) / \
+	(s32)Global_CurrentCh2MicroVoltsPerPix + SIGNAL_LINE_LENGTH / 2  \
+)
+
+#define GET_X_PIX_MATH_MODE(xParsed)               \
+(                                                  \
+	((xParsed) + Global_Offset2MicroVolts) /       \
+	(s32)Global_CurrentCh2MicroVoltsPerPix + 80    \
 )
 
 

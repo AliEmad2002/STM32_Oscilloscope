@@ -136,18 +136,18 @@ void OSC_voidInitOtherInfo(OSC_Info_t* infoArr, char* strV, char* strS)
 	infoArr[START_INDEX_OF_OTHER_INFO + 2].name = (char*)str2;
 	infoArr[START_INDEX_OF_OTHER_INFO + 2].unit = strV;
 
-//	/*	Time cursors	*/
-//	static const char str3[] = "t1";
-//	infoArr[START_INDEX_OF_OTHER_INFO + 3].name = str3;
-//	infoArr[START_INDEX_OF_OTHER_INFO + 3].unit = strS;
-//	infoArr[START_INDEX_OF_OTHER_INFO + 3].getValInNanoCallback =
-//		OSC_s64GetT1Info;
-//
-//	static const char str4[] = "t2";
-//	infoArr[START_INDEX_OF_OTHER_INFO + 4].name = str4;
-//	infoArr[START_INDEX_OF_OTHER_INFO + 4].unit = strS;
-//	infoArr[START_INDEX_OF_OTHER_INFO + 4].getValInNanoCallback =
-//		OSC_s64GetT2Info;
+	/*	Time cursors	*/
+	static const char str3[] = "t1";
+	infoArr[START_INDEX_OF_OTHER_INFO + 3].name = str3;
+	infoArr[START_INDEX_OF_OTHER_INFO + 3].unit = strS;
+	infoArr[START_INDEX_OF_OTHER_INFO + 3].getValInNanoCallback =
+		OSC_s64GetT1Info;
+
+	static const char str4[] = "t2";
+	infoArr[START_INDEX_OF_OTHER_INFO + 4].name = str4;
+	infoArr[START_INDEX_OF_OTHER_INFO + 4].unit = strS;
+	infoArr[START_INDEX_OF_OTHER_INFO + 4].getValInNanoCallback =
+		OSC_s64GetT2Info;
 }
 
 void OSC_voidInitInfoArr(void)
