@@ -270,7 +270,7 @@ void OSC_voidUpdateCheckListOnDisplay(Check_List_t* checkListPtr)
 	/**	draw check-list lines	**/
 	u8 iStart;
 	u8 iMax;
-	if(checkListPtr->numberOfElements > 15)
+	if(checkListPtr->currentSelectedElement > 14)
 	{
 		iStart = checkListPtr->currentSelectedElement;
 		iMax = iStart + 15;
@@ -282,7 +282,7 @@ void OSC_voidUpdateCheckListOnDisplay(Check_List_t* checkListPtr)
 	else
 	{
 		iStart = 0;
-		iMax = checkListPtr->numberOfElements;
+		iMax = 15;
 	}
 
 	for (u8 i = iStart; i < iMax; i++)

@@ -124,7 +124,7 @@ void OSC_voidInitHAL(void)
 
 	OSC_voidSetDisplayBoundariesForSignalArea();
 
-	OSC_voidInitIR();
+	//OSC_voidInitIR();
 
 	Rotary_Encoder_voidInit();
 }
