@@ -194,7 +194,7 @@ void OSC_voidUpdateMenuOnDisplay(Menu_t* menu)
 void OSC_voidOpenCheckList(Check_List_t* checkListPtr)
 {
 	/*	reset selection	*/
-
+	checkListPtr->currentSelectedElement = 0;
 
 	/*	show check-list on the screen	*/
 	OSC_voidUpdateCheckListOnDisplay(checkListPtr);
@@ -268,24 +268,36 @@ void OSC_voidUpdateCheckListOnDisplay(Check_List_t* checkListPtr)
 	TFT2_voidFillDMA((TFT2_t*)&Global_LCD, &LCD_BACKGROUND_COLOR_U8, 128 * 160);
 
 	/**	draw check-list lines	**/
-	u8 iStart;
-	u8 iMax;
-	if(checkListPtr->currentSelectedElement > 14)
-	{
-		iStart = checkListPtr->currentSelectedElement;
-		iMax = iStart + 15;
+	/*	Maximum number of elements that could be drawn in one row	*/
+	#define MAX_IN_ROW		15
 
-		if (iMax > checkListPtr->numberOfElements)
-			iMax = checkListPtr->numberOfElements;
-	}
+	/*
+	 * Example from which next calculation could be understood:
+	 *
+	 * 	-	Let "current" = 64, and "max_in_row" = 15.
+	 *
+	 * 	-	First four 15 elements (4 * 15 = 60 element) are not in the scope of
+	 * 		display.
+	 *
+	 * 	-	Therefore, first element on this time is element number 60.
+	 *
+	 * 	-	"60" comes from: "current" - "current" % "max_in_row".
+	 *
+	 * 	-	"iMax" is now "current" + "max_in_row". In order to list starting
+	 * 		from the "60"th element to end of the list.
+	 *
+	 * 	-	Check range for "iMax".
+	 */
+	u8 iFirst =
+		checkListPtr->currentSelectedElement -
+		(checkListPtr->currentSelectedElement % MAX_IN_ROW);
 
-	else
-	{
-		iStart = 0;
-		iMax = 15;
-	}
+	u8 iMax = iFirst + MAX_IN_ROW;
 
-	for (u8 i = iStart; i < iMax; i++)
+	if (iMax > checkListPtr->numberOfElements)
+		iMax = checkListPtr->numberOfElements;
+
+	for (u8 i = iFirst; i < iMax; i++)
 	{
 		/*	if 'i'th element is hidden, continue	*/
 		if (CHECK_LIST_IS_ELEMENT_HIDDEN(checkListPtr, i))
@@ -332,7 +344,9 @@ void OSC_voidUpdateCheckListOnDisplay(Check_List_t* checkListPtr)
 			8, 160);
 
 		/*	set boundaries 	*/
-		TFT2_SET_X_BOUNDARIES(&Global_LCD, 128 - 8 * ((i - iStart) + 1), 127 - 8 * (i - iStart));
+		u8 xMin = 128 - 8 * ((i - iFirst) + 1);
+		u8 xMax = 127 - 8 * (i - iFirst);
+		TFT2_SET_X_BOUNDARIES(&Global_LCD, xMin, xMax);
 		TFT2_SET_Y_BOUNDARIES(&Global_LCD, 0, 159);
 
 		/*	start data write operation	*/
