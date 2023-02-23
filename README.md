@@ -29,7 +29,7 @@ https://user-images.githubusercontent.com/99054912/218281196-0afc6911-5c1d-4a83-
 https://user-images.githubusercontent.com/99054912/218280302-0e1fd5a7-b59d-487b-b7cb-dc946272d8b8.mp4
 
 # Disclaimer:
-* My main focus in this project was embedded SW and HW. Hence, the electronic circuits used are the very basic ones for the job.
+* My main focus in this project was embedded SW and HW. Hence, the electronic analog circuits used are not the best for the job.
 * Any ways, most of these are not needed if the MCU to use has PGA (programmable gain amplifier), and Vref pin. For example STM32L476xx.
 * Thus, better sampling is obtained using advanced external circuitry, or using MCU like the one mentioned.
 
