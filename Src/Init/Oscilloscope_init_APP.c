@@ -37,6 +37,7 @@
 #include "Oscilloscope_Private.h"
 #include "Oscilloscope_Cursor.h"
 #include "Oscilloscope_GlobalExterns.h"
+#include "Oscilloscope_SavedConfig.h"
 #include "Oscilloscope_Info_Init.h"
 #include "Oscilloscope_Menu_Interface.h"
 #include "Oscilloscope_Menu_Init.h"
@@ -45,9 +46,13 @@
 
 void OSC_voidInitAPP(void)
 {
+	/*	init UI	*/
 	OSC_voidInitInfoArr();
 
 	OSC_voidInitMainMenu();
+
+	/*	copy saved configuration from flash to RAM	*/
+	OSC_voidGetSavedConfigFromFlash();
 
 	/*
 	 * as calling "OSC_voidAutoCalibrate()" at the first few microseconds of

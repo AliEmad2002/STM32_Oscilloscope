@@ -30,12 +30,10 @@
 #include "Oscilloscope_Info.h"
 #include "Oscilloscope_Info_Init.h"
 
-#define START_INDEX_OF_CH2_INFO		6
-#define START_INDEX_OF_OTHER_INFO	(START_INDEX_OF_CH2_INFO * 2)
 
 extern volatile OSC_Info_t Global_InfoArr[NUMBER_OF_INFO];
 
-void OSC_voidInitCh1Info(OSC_Info_t* infoArr, char* strHz, char* strV)
+void OSC_voidInitCh1Info(OSC_Info_t* infoArr, char* strHz, char* strV, char* strS)
 {
 	/*	freq	*/
 	static const char str0[] = "F1";
@@ -72,9 +70,15 @@ void OSC_voidInitCh1Info(OSC_Info_t* infoArr, char* strHz, char* strV)
 	infoArr[5].name = (char*)str5;
 	infoArr[5].unit = strV;
 	infoArr[5].getValInNanoCallback = OSC_s64GetVdiv1Info;
+
+	/*	active time	*/
+	static const char str6[] = "tOn1";
+	infoArr[6].name = (char*)str6;
+	infoArr[6].unit = strS;
+	infoArr[6].getValInNanoCallback = OSC_s64GetTon1Info;
 }
 
-void OSC_voidInitCh2Info(OSC_Info_t* infoArr, char* strHz, char* strV)
+void OSC_voidInitCh2Info(OSC_Info_t* infoArr, char* strHz, char* strV, char* strS)
 {
 	/*	freq	*/
 	static const char str0[] = "F2";
@@ -116,6 +120,13 @@ void OSC_voidInitCh2Info(OSC_Info_t* infoArr, char* strHz, char* strV)
 	infoArr[START_INDEX_OF_CH2_INFO + 5].unit = strV;
 	infoArr[START_INDEX_OF_CH2_INFO + 5].getValInNanoCallback =
 		OSC_s64GetVdiv2Info;
+
+	/*	active time	*/
+	static const char str6[] = "tOn2";
+	infoArr[START_INDEX_OF_CH2_INFO + 6].name = (char*)str6;
+	infoArr[START_INDEX_OF_CH2_INFO + 6].unit = strS;
+	infoArr[START_INDEX_OF_CH2_INFO + 6].getValInNanoCallback =
+		OSC_s64GetTon2Info;
 }
 
 void OSC_voidInitOtherInfo(OSC_Info_t* infoArr, char* strV, char* strS)
@@ -138,13 +149,13 @@ void OSC_voidInitOtherInfo(OSC_Info_t* infoArr, char* strV, char* strS)
 
 	/*	Time cursors	*/
 	static const char str3[] = "t1";
-	infoArr[START_INDEX_OF_OTHER_INFO + 3].name = str3;
+	infoArr[START_INDEX_OF_OTHER_INFO + 3].name = (char*)str3;
 	infoArr[START_INDEX_OF_OTHER_INFO + 3].unit = strS;
 	infoArr[START_INDEX_OF_OTHER_INFO + 3].getValInNanoCallback =
 		OSC_s64GetT1Info;
 
 	static const char str4[] = "t2";
-	infoArr[START_INDEX_OF_OTHER_INFO + 4].name = str4;
+	infoArr[START_INDEX_OF_OTHER_INFO + 4].name = (char*)str4;
 	infoArr[START_INDEX_OF_OTHER_INFO + 4].unit = strS;
 	infoArr[START_INDEX_OF_OTHER_INFO + 4].getValInNanoCallback =
 		OSC_s64GetT2Info;
@@ -157,26 +168,21 @@ void OSC_voidInitInfoArr(void)
 	static const char strS[] = "S";
 
 	/**	Channel 1 info	**/
-	OSC_voidInitCh1Info((OSC_Info_t*)Global_InfoArr, (char*)strHz, (char*)strV);
+	OSC_voidInitCh1Info(
+		(OSC_Info_t*)Global_InfoArr, (char*)strHz, (char*)strV, (char*)strS);
 
 	/**	Channel 2 info	**/
-	OSC_voidInitCh2Info((OSC_Info_t*)Global_InfoArr, (char*)strHz, (char*)strV);
+	OSC_voidInitCh2Info(
+		(OSC_Info_t*)Global_InfoArr, (char*)strHz, (char*)strV, (char*)strS);
 
 	/**	Other info	**/
 	OSC_voidInitOtherInfo((OSC_Info_t*)Global_InfoArr, (char*)strV, (char*)strS);
 
-	/**	Disable all	**/
+	/**
+	 * Disable all. (Default enable is loaded at the first config flash to
+	 * RAM update).
+	 **/
 	for (u8 i = 0; i < NUMBER_OF_INFO; i++)
 		Global_InfoArr[i].enabled = false;
-
-	/**	Default enable	**/
-	/*	freq1	*/
-	Global_InfoArr[0].enabled = true;
-	/*	vpp1	*/
-	Global_InfoArr[1].enabled = true;
-	/*	freq2	*/
-	Global_InfoArr[START_INDEX_OF_CH2_INFO].enabled = true;
-	/*	vpp2	*/
-	Global_InfoArr[START_INDEX_OF_CH2_INFO + 1].enabled = true;
 }
 

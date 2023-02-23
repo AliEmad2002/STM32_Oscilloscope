@@ -35,6 +35,7 @@
 #include "Oscilloscope_Private.h"
 #include "Oscilloscope_Cursor.h"
 #include "Oscilloscope_GlobalExterns.h"
+#include "Oscilloscope_SavedConfig.h"
 #include "Oscilloscope_Div.h"
 
 
@@ -55,6 +56,9 @@ void OSC_voidIncrementCh1VoltageDiv(void)
 			return;
 		}
 	}
+
+	/*	update saved configuration in flash	*/
+	OSC_voidWriteCurrentConfigOnFlash();
 }
 
 void OSC_voidIncrementCh2VoltageDiv(void)
@@ -74,6 +78,9 @@ void OSC_voidIncrementCh2VoltageDiv(void)
 			return;
 		}
 	}
+
+	/*	update saved configuration in flash	*/
+	OSC_voidWriteCurrentConfigOnFlash();
 }
 
 void OSC_voidIncrementTimeDiv(void)
@@ -92,6 +99,9 @@ void OSC_voidIncrementTimeDiv(void)
 			return;
 		}
 	}
+
+	/*	update saved configuration in flash	*/
+	OSC_voidWriteCurrentConfigOnFlash();
 }
 
 void OSC_voidDecrementCh1VoltageDiv(void)
@@ -111,6 +121,9 @@ void OSC_voidDecrementCh1VoltageDiv(void)
 			return;
 		}
 	}
+
+	/*	update saved configuration in flash	*/
+	OSC_voidWriteCurrentConfigOnFlash();
 }
 
 void OSC_voidDecrementCh2VoltageDiv(void)
@@ -130,6 +143,9 @@ void OSC_voidDecrementCh2VoltageDiv(void)
 			return;
 		}
 	}
+
+	/*	update saved configuration in flash	*/
+	OSC_voidWriteCurrentConfigOnFlash();
 }
 
 void OSC_voidDecrementTimeDiv(void)
@@ -148,5 +164,8 @@ void OSC_voidDecrementTimeDiv(void)
 			return;
 		}
 	}
+
+	/*	update saved configuration in flash	*/
+	OSC_voidWriteCurrentConfigOnFlash();
 }
 

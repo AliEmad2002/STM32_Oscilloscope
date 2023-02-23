@@ -8,7 +8,10 @@
 #ifndef APP_INFO_OSCILLOSCOPE_INFO_H_
 #define APP_INFO_OSCILLOSCOPE_INFO_H_
 
-#define NUMBER_OF_INFO	17
+#define NUMBER_OF_INFO	19
+
+#define START_INDEX_OF_CH2_INFO		7
+#define START_INDEX_OF_OTHER_INFO	(START_INDEX_OF_CH2_INFO * 2)
 
 typedef struct{
 	s64 (*getValInNanoCallback)(void);
@@ -37,6 +40,29 @@ void OSC_voidGetNumberPrintableVersion(
 void OSC_voidGetInfoStringToPrint(char* str, u8 infoIndex);
 
 void OSC_voidSSetTFTBoundariesToInfo(u8 infoIndex);
+
+/**	Hide, show functions	**/
+/*	Ch1	*/
+void OSC_voidShowCh1Info(void);
+
+/*	Ch2	*/
+void OSC_voidShowCh2Info(void);
+
+/**	Enable, disable functions	**/
+/*	disables all enabled info's	*/
+void OSC_voidDisableAllInfo(void);
+
+/*	enables info of certain index in infoArr	*/
+void OSC_voidEnableInfo(u8 i);
+
+/*	disables info of certain index in infoArr	*/
+void OSC_voidDisableInfo(u8 i);
+
+/*
+ * gets indexes of the first four enabled info's, grouped in 32-bit single
+ * variable.
+ */
+u32 OSC_u32GetEnabledInfo(void);
 
 /**	callbacks	**/
 /*	freq1	*/
@@ -74,6 +100,12 @@ s64 OSC_s64GetVdiv1Info(void);
 
 /*	vDiv2	*/
 s64 OSC_s64GetVdiv2Info(void);
+
+/*	tOn1	*/
+s64 OSC_s64GetTon1Info(void);
+
+/*	tOn2	*/
+s64 OSC_s64GetTon2Info(void);
 
 /*	tDiv	*/
 s64 OSC_s64GetTdivInfo(void);

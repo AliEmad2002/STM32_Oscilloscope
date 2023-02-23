@@ -22,6 +22,7 @@
 #include "SPI_interface.h"
 #include "TIM_interface.h"
 #include "GPIO_interface.h"
+#include "STK_interface.h"
 
 /*	HAL	*/
 #include "TFT_interface_V2.h"
@@ -89,41 +90,41 @@ void OSC_voidGetNumberPrintableVersion(
 {
 	u64 valInNanoAbs = (valInNano < 0) ? -valInNano : valInNano;
 
-	if (valInNanoAbs < 1e3)
+	if (valInNanoAbs < (u64)1e3)
 	{
 		*unitPrefix = 'n';
 		*valInteger = valInNano;
 		*valFraction = 0;
 	}
-	else if (valInNanoAbs < 1e6)
+	else if (valInNanoAbs < (u64)1e6)
 	{
 		*unitPrefix = 'u';
 		*valInteger = valInNano / 1e3;
-		*valFraction = (valInNanoAbs - 1e3) / 1e2;
+		*valFraction = valInNanoAbs % (u64)1e3;
 	}
-	else if (valInNanoAbs < 1e9)
+	else if (valInNanoAbs < (u64)1e9)
 	{
 		*unitPrefix = 'm';
-		*valInteger = valInNano / 1e6;
-		*valFraction = (valInNanoAbs - 1e6) / 1e5;
+		*valInteger = valInNano / (u64)1e6;
+		*valFraction = valInNanoAbs % (u64)1e6;
 	}
-	else if (valInNanoAbs < 1e12)
+	else if (valInNanoAbs < (u64)1e12)
 	{
 		*unitPrefix = ' ';
-		*valInteger = valInNano / 1e9;
-		*valFraction = (valInNanoAbs - 1e9) / 1e8;
+		*valInteger = valInNano / (u64)1e9;
+		*valFraction = valInNano % (u64)1e9;
 	}
-	else if (valInNanoAbs < 1e15)
+	else if (valInNanoAbs < (u64)1e15)
 	{
 		*unitPrefix = 'k';
-		*valInteger = valInNano / 1e12;
-		*valFraction = (valInNanoAbs - 1e12) / 1e11;
+		*valInteger = valInNano / (u64)1e12;
+		*valFraction = valInNano % (u64)1e12;
 	}
-	else if (valInNanoAbs < 1e18)
+	else if (valInNanoAbs < (u64)1e18)
 	{
 		*unitPrefix = 'M';
-		*valInteger = valInNano / 1e15;
-		*valFraction = (valInNanoAbs - 1e15) / 1e14;
+		*valInteger = valInNano / (u64)1e15;
+		*valFraction = valInNano % (u64)1e15;
 	}
 
 	/*	fraction is maximumly of 1 digit	*/
@@ -167,40 +168,179 @@ void OSC_voidSSetTFTBoundariesToInfo(u8 infoIndex)
 	TFT2_ENTER_DATA_MODE(&Global_LCD);
 }
 
+/**	Hide, show functions	**/
+/*	Ch1	*/
+void OSC_voidShowCh1Info(void)
+{
+
+}
+/*	Ch2	*/
+void OSC_voidShowCh2Info(void)
+{
+
+}
+
+/**	Enable, disable functions	**/
+/*	disables all enabled info's	*/
+void OSC_voidDisableAllInfo(void)
+{
+	for (u8 i = 0; i < NUMBER_OF_INFO; i++)
+	{
+		Global_InfoArr[i].enabled = false;
+	}
+}
+
+/*	enables info of certain index in infoArr	*/
+void OSC_voidEnableInfo(u8 i)
+{
+	/*	range check 'i'	*/
+	if (i >= NUMBER_OF_INFO)
+		return;
+
+	/*	if passed the check, enable	*/
+	Global_InfoArr[i].enabled = true;
+}
+
+/*	disables info of certain index in infoArr	*/
+void OSC_voidDisableInfo(u8 i)
+{
+	/*	range check 'i'	*/
+	if (i >= NUMBER_OF_INFO)
+		return;
+
+	/*	if passed the check, disable	*/
+	Global_InfoArr[i].enabled = false;
+}
+
+/*
+ * gets indexes of the first four enabled info's, grouped in 32-bit single
+ * variable.
+ */
+u32 OSC_u32GetEnabledInfo(void)
+{
+	u32 enabled = 0;
+
+	u8 enabledCount = 0;
+
+	for (u8 i = 0; i < NUMBER_OF_INFO; i++)
+	{
+		if (Global_InfoArr[i].enabled)
+		{
+			enabled |= (i << (enabledCount * 8));
+
+			enabledCount++;
+		}
+	}
+
+	return enabled;
+}
+
 /**	Callbacks	**/
 /*	freq1	*/
 s64 OSC_s64GetFreq1Info(void)
 {
+	static u64 lastMeasureTimestamp = 0;
+
+	/*
+	 * store last measured frequency. saved in case user pauses, so the shown
+	 * is the same before pausing.
+	 */
 	static u64 lastFreqMeasureBeforePause = 0;
 
-	if (!Global_Paused)
+	/*
+	 * if paused, frequency does not change, it is the last saved before pausing
+	 */
+	if (Global_Paused)
+	{	}
+
+	/*	otherwise	*/
+	/*	check if a rising edge occurred	*/
+	else if (
+		TIM_GET_STATUS_FLAG(
+			FREQ_MEASURE_CH1_TIMER_UNIT_NUMBER, TIM_Status_CC1)
+	)
 	{
-		if (
-			TIM_GET_STATUS_FLAG(
-				FREQ_MEASURE_CH1_TIMER_UNIT_NUMBER, TIM_Status_CC1)
-		)
-			lastFreqMeasureBeforePause =
+		/*	if so, update frequency measurement	*/
+		lastFreqMeasureBeforePause =
 				TIM_u64GetFrequencyMeasured(FREQ_MEASURE_CH1_TIMER_UNIT_NUMBER);
+
+		lastMeasureTimestamp = STK_u64GetElapsedTicks();
 	}
 
+	/*
+	 * otherwise, check rising edge time out. If it has not occurred in that
+	 * time period, frequency is changed to zero.
+	 */
+	else if (
+		STK_u64GetElapsedTicks() - lastMeasureTimestamp >
+		FREQ_MEASURE_TIMEOUT_MS * STK_TICKS_PER_MS
+	)
+	{
+		lastFreqMeasureBeforePause = 0;
+	}
+
+	/*
+	 * otherwise, if a rising edge has not occurred, but timeout has not yet
+	 * passed, last measured frequency is kept unchanged.
+	 */
+	else
+	{	}
+
+	/*	return frequency in nano-Hz	*/
 	return lastFreqMeasureBeforePause * 1e6;
 }
 
 /*	freq2	*/
 s64 OSC_s64GetFreq2Info(void)
 {
+	static u64 lastMeasureTimestamp = 0;
+
+	/*
+	 * store last measured frequency. saved in case user pauses, so the shown
+	 * is the same before pausing.
+	 */
 	static u64 lastFreqMeasureBeforePause = 0;
 
-	if (!Global_Paused)
+	/*
+	 * if paused, frequency does not change, it is the last saved before pausing
+	 */
+	if (Global_Paused)
+	{	}
+
+	/*	otherwise	*/
+	/*	check if a rising edge occurred	*/
+	else if (
+		TIM_GET_STATUS_FLAG(
+			FREQ_MEASURE_CH2_TIMER_UNIT_NUMBER, TIM_Status_CC1)
+	)
 	{
-		if (
-			TIM_GET_STATUS_FLAG(
-				FREQ_MEASURE_CH2_TIMER_UNIT_NUMBER, TIM_Status_CC1)
-		)
-			lastFreqMeasureBeforePause =
+		/*	if so, update frequency measurement	*/
+		lastFreqMeasureBeforePause =
 				TIM_u64GetFrequencyMeasured(FREQ_MEASURE_CH2_TIMER_UNIT_NUMBER);
+
+		lastMeasureTimestamp = STK_u64GetElapsedTicks();
 	}
 
+	/*
+	 * otherwise, check rising edge time out. If it has not occurred in that
+	 * time period, frequency is changed to zero.
+	 */
+	else if (
+		STK_u64GetElapsedTicks() - lastMeasureTimestamp >
+		FREQ_MEASURE_TIMEOUT_MS * STK_TICKS_PER_MS
+	)
+	{
+		lastFreqMeasureBeforePause = 0;
+	}
+
+	/*
+	 * otherwise, if a rising edge has not occurred, but timeout has not yet
+	 * passed, last measured frequency is kept unchanged.
+	 */
+	else
+	{	}
+
+	/*	return frequency in nano-Hz	*/
 	return lastFreqMeasureBeforePause * 1e6;
 }
 
@@ -292,6 +432,28 @@ s64 OSC_s64GetVdiv1Info(void)
 s64 OSC_s64GetVdiv2Info(void)
 {
 	return Global_CurrentCh2MicroVoltsPerPix * PIXELS_PER_VOLTAGE_DIV * 1e3;
+}
+
+/*	tOn1	*/
+s64 OSC_s64GetTon1Info(void)
+{
+	/*	if frequency equals zero, there's no active time	*/
+	if (OSC_s64GetFreq1Info() == 0)
+		return 0;
+
+	/*	otherwise, calculate it	*/
+	return TIM_u16GetActiveTimeNanoSecond(FREQ_MEASURE_CH1_TIMER_UNIT_NUMBER);
+}
+
+/*	tOn2	*/
+s64 OSC_s64GetTon2Info(void)
+{
+	/*	if frequency equals zero, there's no active time	*/
+	if (OSC_s64GetFreq2Info() == 0)
+		return 0;
+
+	/*	otherwise, calculate it	*/
+	return TIM_u16GetActiveTimeNanoSecond(FREQ_MEASURE_CH2_TIMER_UNIT_NUMBER);
 }
 
 /*	tDiv	*/

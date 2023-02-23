@@ -35,6 +35,7 @@
 #include "Oscilloscope_Private.h"
 #include "Oscilloscope_Cursor.h"
 #include "Oscilloscope_GlobalExterns.h"
+#include "Oscilloscope_SavedConfig.h"
 #include "Oscilloscope_Offset.h"
 
 
@@ -43,6 +44,9 @@ void OSC_voidIncrementCh1Offset(void)
 	if (Global_IsCh1Enabled)
 	{
 		Global_Offset1MicroVolts += Global_CurrentCh1MicroVoltsPerPix;
+
+		/*	update saved configuration in flash	*/
+		OSC_voidWriteCurrentConfigOnFlash();
 	}
 }
 
@@ -51,6 +55,9 @@ void OSC_voidIncrementCh2Offset(void)
 	if (Global_IsCh2Enabled)
 	{
 		Global_Offset2MicroVolts += Global_CurrentCh2MicroVoltsPerPix;
+
+		/*	update saved configuration in flash	*/
+		OSC_voidWriteCurrentConfigOnFlash();
 	}
 }
 
@@ -59,6 +66,9 @@ void OSC_voidDecrementCh1Offset(void)
 	if (Global_IsCh1Enabled)
 	{
 		Global_Offset1MicroVolts -= Global_CurrentCh1MicroVoltsPerPix;
+
+		/*	update saved configuration in flash	*/
+		OSC_voidWriteCurrentConfigOnFlash();
 	}
 }
 
@@ -67,6 +77,9 @@ void OSC_voidDecrementCh2Offset(void)
 	if (Global_IsCh2Enabled)
 	{
 		Global_Offset2MicroVolts -= Global_CurrentCh2MicroVoltsPerPix;
+
+		/*	update saved configuration in flash	*/
+		OSC_voidWriteCurrentConfigOnFlash();
 	}
 }
 

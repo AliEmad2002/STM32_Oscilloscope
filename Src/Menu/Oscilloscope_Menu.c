@@ -42,6 +42,7 @@
 #include "Oscilloscope_Private.h"
 #include "Oscilloscope_config.h"
 #include "Oscilloscope_GlobalExterns.h"
+#include "Oscilloscope_SavedConfig.h"
 #include "Oscilloscope_Draw.h"
 #include "Oscilloscope_Info.h"
 #include "Oscilloscope_Info_Init.h"
@@ -241,13 +242,14 @@ void OSC_voidOpenCheckList(Check_List_t* checkListPtr)
 			)
 				break;
 
-			/*
-			 * otherwise, toggle checked flag of current selected element,
-			 * and update display.
-			 */
+			/*	otherwise, toggle checked flag of current selected element.	*/
 			CHECK_LIST_TOGGLE_CHECK(
 				checkListPtr, checkListPtr->currentSelectedElement);
 
+			/*	update saved configuration	*/
+			OSC_voidWriteCurrentConfigOnFlash();
+
+			/*	update display	*/
 			OSC_voidUpdateCheckListOnDisplay(checkListPtr);
 		}
 	}
@@ -367,51 +369,81 @@ void OSC_voidUpdateCheckListOnDisplay(Check_List_t* checkListPtr)
 void OSC_voidSelectChangeCh1VoltageDivAsUpDownTraget(void)
 {
 	Global_UpDownTarget = OSC_Up_Down_Target_ChangeCh1VoltageDiv;
+
+	/*	update saved configuration in flash	*/
+	OSC_voidWriteCurrentConfigOnFlash();
 }
 
 void OSC_voidSelectChangeCh2VoltageDivAsUpDownTraget(void)
 {
 	Global_UpDownTarget = OSC_Up_Down_Target_ChangeCh2VoltageDiv;
+
+	/*	update saved configuration in flash	*/
+	OSC_voidWriteCurrentConfigOnFlash();
 }
 
 void OSC_voidSelectChangeTimeDivAsUpDownTraget(void)
 {
 	Global_UpDownTarget = OSC_Up_Down_Target_ChangeTimeDiv;
+
+	/*	update saved configuration in flash	*/
+	OSC_voidWriteCurrentConfigOnFlash();
 }
 
 void OSC_voidSelectChangeV1Position(void)
 {
 	Global_UpDownTarget = OSC_Up_Down_Target_ChangeVoltageCursor1Position;
+
+	/*	update saved configuration in flash	*/
+	OSC_voidWriteCurrentConfigOnFlash();
 }
 
 void OSC_voidSelectChangeV2Position(void)
 {
 	Global_UpDownTarget = OSC_Up_Down_Target_ChangeVoltageCursor2Position;
+
+	/*	update saved configuration in flash	*/
+	OSC_voidWriteCurrentConfigOnFlash();
 }
 
 void OSC_voidSelectChangeT1Position(void)
 {
 	Global_UpDownTarget = OSC_Up_Down_Target_ChangeTimeCursor1Position;
+
+	/*	update saved configuration in flash	*/
+	OSC_voidWriteCurrentConfigOnFlash();
 }
 
 void OSC_voidSelectChangeT2Position(void)
 {
 	Global_UpDownTarget = OSC_Up_Down_Target_ChangeTimeCursor2Position;
+
+	/*	update saved configuration in flash	*/
+	OSC_voidWriteCurrentConfigOnFlash();
 }
 
 void OSC_voidSelectChangeCh1Offset(void)
 {
 	Global_UpDownTarget = OSC_Up_Down_Target_ChangeCh1Offset;
+
+	/*	update saved configuration in flash	*/
+	OSC_voidWriteCurrentConfigOnFlash();
 }
 
 void OSC_voidSelectChangeCh2Offset(void)
 {
 	Global_UpDownTarget = OSC_Up_Down_Target_ChangeCh2Offset;
+
+	/*	update saved configuration in flash	*/
+	OSC_voidWriteCurrentConfigOnFlash();
 }
 
 void OSC_voidSelectChangeBrightness(void)
 {
 	Global_UpDownTarget = OSC_Up_Down_Target_ChangeBrightness;
+
+	/*	update saved configuration in flash	*/
+	OSC_voidWriteCurrentConfigOnFlash();
 }
 
 
