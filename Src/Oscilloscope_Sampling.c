@@ -35,16 +35,36 @@
 #include "Oscilloscope_Private.h"
 #include "Oscilloscope_Cursor.h"
 #include "Oscilloscope_GlobalExterns.h"
+#include "Oscilloscope_Info.h"
 #include "Oscilloscope_Sampling.h"
+
+inline u8 OSC_u8GetTimSyncTimerUnit(void)
+{
+	/*	if only one channel was enabled, sync on its input	*/
+	if (Global_IsCh1Enabled && !Global_IsCh2Enabled)
+		return FREQ_MEASURE_CH1_TIMER_UNIT_NUMBER;
+
+	else if (Global_IsCh2Enabled && !Global_IsCh1Enabled)
+		return FREQ_MEASURE_CH2_TIMER_UNIT_NUMBER;
+
+	/*	otherwise, sync on the input of the one with more vPP	*/
+	else
+	{
+		s64 vpp1 = OSC_s64GetVpp1Info();
+		s64 vpp2 = OSC_s64GetVpp2Info();
+
+		if (vpp1 > vpp2)
+			return FREQ_MEASURE_CH1_TIMER_UNIT_NUMBER;
+
+		else
+			return FREQ_MEASURE_CH2_TIMER_UNIT_NUMBER;
+	}
+}
 
 void OSC_voidWaitForSignalRisingEdge(void)
 {
-	/*	normally sync on ch1 input, unless disabled, then sync on ch2 input	*/
-	u8 syncTimUnit;
-	if (Global_IsCh1Enabled)
-		syncTimUnit = FREQ_MEASURE_CH1_TIMER_UNIT_NUMBER;
-	else
-		syncTimUnit = FREQ_MEASURE_CH2_TIMER_UNIT_NUMBER;
+	/*	get sync timer unit	*/
+	u8 syncTimUnit = OSC_u8GetTimSyncTimerUnit();
 
 	/*
 	 * Wait for a rising edge of the signal before starting sampling. This gives

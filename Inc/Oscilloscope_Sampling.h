@@ -8,6 +8,7 @@
 #ifndef INCLUDE_APP_OSCILLOSCOPE_SAMPLING_H_
 #define INCLUDE_APP_OSCILLOSCOPE_SAMPLING_H_
 
+u8 OSC_u8GetTimSyncTimerUnit(void);
 
 void OSC_voidWaitForSignalRisingEdge(void);
 

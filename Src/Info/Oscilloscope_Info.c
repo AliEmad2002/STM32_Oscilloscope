@@ -100,31 +100,31 @@ void OSC_voidGetNumberPrintableVersion(
 	{
 		*unitPrefix = 'u';
 		*valInteger = valInNano / 1e3;
-		*valFraction = valInNanoAbs % (u64)1e3;
+		*valFraction = (valInNanoAbs % (u64)1e3) / (u64)1e2;
 	}
 	else if (valInNanoAbs < (u64)1e9)
 	{
 		*unitPrefix = 'm';
 		*valInteger = valInNano / (u64)1e6;
-		*valFraction = valInNanoAbs % (u64)1e6;
+		*valFraction = (valInNanoAbs % (u64)1e6) / (u64)1e5;
 	}
 	else if (valInNanoAbs < (u64)1e12)
 	{
 		*unitPrefix = ' ';
 		*valInteger = valInNano / (u64)1e9;
-		*valFraction = valInNano % (u64)1e9;
+		*valFraction = (valInNano % (u64)1e9) / (u64)1e8;
 	}
 	else if (valInNanoAbs < (u64)1e15)
 	{
 		*unitPrefix = 'k';
 		*valInteger = valInNano / (u64)1e12;
-		*valFraction = valInNano % (u64)1e12;
+		*valFraction = (valInNano % (u64)1e12) / (u64)1e13;
 	}
 	else if (valInNanoAbs < (u64)1e18)
 	{
 		*unitPrefix = 'M';
 		*valInteger = valInNano / (u64)1e15;
-		*valFraction = valInNano % (u64)1e15;
+		*valFraction = (valInNano % (u64)1e15) / (u64)1e14;
 	}
 
 	/*	fraction is maximumly of 1 digit	*/

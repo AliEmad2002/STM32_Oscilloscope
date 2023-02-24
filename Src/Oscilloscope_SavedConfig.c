@@ -93,10 +93,10 @@ void OSC_voidGetSavedConfigFromFlash(void)
 	u32 selectedInfoArrCompressed =
 		FPEC_u32ReadWord(SELECTED_INFO_ARR_F_ADDRESS);
 
-	u8 selectedInfo0 = selectedInfoArrCompressed & 0xFF;
-	u8 selectedInfo1 = selectedInfoArrCompressed & (0xFF << 8);
-	u8 selectedInfo2 = selectedInfoArrCompressed & (0xFF << 16);
-	u8 selectedInfo3 = selectedInfoArrCompressed & (0xFF << 24);
+	u8 selectedInfo0 = (u8)(selectedInfoArrCompressed & 0xFF);
+	u8 selectedInfo1 = (u8)((selectedInfoArrCompressed >> 8) & 0xFF);
+	u8 selectedInfo2 = (u8)((selectedInfoArrCompressed >> 16) & 0xFF);
+	u8 selectedInfo3 = (u8)((selectedInfoArrCompressed >> 24) & 0xFF);
 
 	OSC_voidDisableAllInfo();
 
