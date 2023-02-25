@@ -5,7 +5,8 @@ STM32f103 based digital oscilloscope. 1MSPS. Dual channel (Y-t) and (Y-X) modes
 * Single and dual channel y-t mode.
 * Single and dual channel x-y mode.
 * 1 MSPS.
-* Maximum of 8V peak to peak.
+* 8Vpp max on channel 1.
+* 0 - 3.3V max on channel 2.
 * Auto voltage and time zoom setting.
 * Vertical offset.
 * Horizontal offset. (x-y mode only)
