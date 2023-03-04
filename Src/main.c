@@ -4,7 +4,7 @@
  *  Created on: Nov 25, 2022
  *      Author: Ali Emad Ali
  *
- * Please notice that last page on the flash memory is used for user configuration>
+ * Please notice that last page on the flash memory is used for user configuration
  * Therefore, don't forget to modify linker script "mem.ld" to 63KB instead of
  * 64KB, to avoid program self overwriting.
  */

@@ -5,7 +5,8 @@ STM32f103 based digital oscilloscope. 1MSPS. Dual channel (Y-t) and (Y-X) modes
 * Single and dual channel y-t mode.
 * Single and dual channel x-y mode.
 * 1 MSPS.
-* Maximum of 8V peak to peak.
+* 8Vpp max on channel 1.
+* 0 - 3.3V max on channel 2.
 * Auto voltage and time zoom setting.
 * Vertical offset.
 * Horizontal offset. (x-y mode only)
@@ -31,7 +32,7 @@ https://user-images.githubusercontent.com/99054912/218280302-0e1fd5a7-b59d-487b-
 # Disclaimer:
 * My main focus in this project was embedded SW and HW. Hence, the electronic analog circuits used are not the best for the job.
 * Any ways, most of these are not needed if the MCU to use has PGA (programmable gain amplifier), and Vref pin. For example STM32L476xx.
-* Thus, better sampling is obtained using advanced external circuitry, or using MCU like the one mentioned.
+* Thus, better sampling on channel 1 is obtained using advanced external circuitry, or using MCU like the one mentioned.
 
 # Issues:
 * Further documentation at "issues": (check closed ones too)
