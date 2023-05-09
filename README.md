@@ -14,7 +14,7 @@ STM32f103 based digital oscilloscope. 1MSPS. Dual channel (Y-t) and (Y-X) modes
 * Zooming in and out. (Changing volts and seconds per division)
 * User configuration saving on flash memory.
 
-# Features to be added (by March2022):
+# Features to be added:
 * Math expression in x-y mode using "MathExpressionParser" project: https://github.com/AliEmad2002/MathExpressionParser.
 * SD card screen shot.
 * Transient capture.
